@@ -6,6 +6,8 @@
 #ifndef APRO_H
 #define APRO_H
 
+#include <asys/base.h>
+
 /*
  * Profile markers are baked into `apro' to make a simpler API with minimal
  * Overhead. `agaprof' is entirely an internal tool, so it doesn't really
@@ -73,14 +75,7 @@ enum apro_section {
 	APRO_MAX
 };
 
-#ifdef __GNUC__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wlong-long"
-#endif
-typedef unsigned long long apro_unit_t;
-#ifdef __GNUC__
-# pragma GCC diagnostic pop
-#endif
+typedef asys_native_ulong_t apro_unit_t;
 
 struct apro_timestamp {
 	apro_unit_t seconds;

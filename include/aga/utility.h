@@ -16,37 +16,6 @@
 		a = scratch; \
 	} while(0)
 
-enum aga_stream_whence {
-	AGA_STREAM_SET,
-	AGA_STREAM_END,
-	AGA_STREAM_CURRENT
-};
-
-enum aga_stream_type {
-	AGA_STREAM_FILE,
-	AGA_STREAM_MEM
-};
-
-struct aga_stream {
-	enum aga_stream_type type;
-	aga_size_t size;
-
-	union {
-		void* file;
-		struct aga_mem_stream {
-			void* p;
-			aga_size_t off;
-		} mem;
-	} data;
-};
-
-enum aga_result aga_stream_new(const char*, struct aga_stream*);
-enum aga_result aga_stream_new_memory(void*, aga_size_t, struct aga_stream*);
-enum aga_result aga_stream_delete(struct aga_stream*);
-
-enum aga_result aga_stream_seek(
-		struct aga_stream*, enum aga_stream_whence, aga_slong_t);
-
 void* aga_memset(void*, int, aga_size_t);
 void* aga_bzero(void*, aga_size_t);
 void* aga_memcpy(void*, const void*, aga_size_t);
@@ -54,9 +23,6 @@ void* aga_memcpy(void*, const void*, aga_size_t);
 aga_bool_t aga_streql(const char*, const char*);
 aga_bool_t aga_strneql(const char*, const char*, aga_size_t);
 aga_size_t aga_strlen(const char*);
-
-aga_slong_t aga_strtol(const char*);
-double aga_strtod(const char*);
 
 char* aga_getenv(const char*);
 

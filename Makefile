@@ -44,6 +44,7 @@ SET_CFLAGS = $(SET_CFLAGS) /DAGA_DEVBUILD
 GL_LDLIBS = opengl32.lib glu32.lib gdi32.lib shell32.lib user32.lib winmm.lib
 GL_LDLIBS = $(GL_LDLIBS) comdlg32.lib
 
+!include lib/prof/asys.mk
 !include lib/prof/apro.mk
 
 !include vendor/python.mk
@@ -81,9 +82,12 @@ SET_CFLAGS = $(SET_CFLAGS) /wd4061
 SET_CFLAGS = $(SET_CFLAGS) /wd4127
 !endif
 
-SET_CFLAGS = $(SET_CFLAGS) /I$(APRO) /I$(PYI) /I$(WWWH) $(DEV_INC) /Iinclude
+SET_CFLAGS = $(SET_CFLAGS) /I$(APRO) /I$(ASYS)
+SET_CFLAGS = $(SET_CFLAGS) /I$(PYI) /I$(WWWH) $(DEV_INC)
 # NOTE: Only needed for VC `getopt' emulation for now.
 SET_CFLAGS = $(SET_CFLAGS) /Ivendor$(SEP)libtiff$(SEP)
+SET_CFLAGS = $(SET_CFLAGS) /Iinclude
+
 SET_CFLAGS = $(SET_CFLAGS) /DAGA_VERSION=\"$(VERSION)\"
 
 .c$(OBJ):
@@ -91,4 +95,6 @@ SET_CFLAGS = $(SET_CFLAGS) /DAGA_VERSION=\"$(VERSION)\"
 
 all: $(AGA_OUT)
 
-clean: clean_apro clean_python clean_www clean_aga clean_glm clean_tiff
+clean: clean_asys clean_apro
+clean: clean_python clean_www clean_glm clean_tiff
+clean: clean_aga

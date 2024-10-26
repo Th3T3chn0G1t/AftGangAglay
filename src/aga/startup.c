@@ -144,7 +144,7 @@ enum aga_result aga_settings_parse_config(
 	enum aga_result result;
 	void* fp;
 	aga_size_t size;
-	aga_slong_t v;
+	aga_config_int_t v;
 	double fv;
 
 	static const char* enabled[] = { "Audio", "Enabled" };

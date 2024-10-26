@@ -73,6 +73,7 @@ else
 	endif
 endif
 
+include lib/sys/asys.mk
 include lib/prof/apro.mk
 
 include vendor/python.mk
@@ -89,7 +90,7 @@ endif
 include src/aga.mk
 
 SET_CFLAGS += $(GL_CFLAGS)
-SET_CFLAGS += -I$(APRO) -I$(PYI) -I$(WWWH) $(DEV_INC) -Iinclude
+SET_CFLAGS += -I$(APRO) -I$(ASYSI) -I$(PYI) -I$(WWWH) $(DEV_INC) -Iinclude
 SET_CFLAGS += -DAGA_VERSION=\"$(VERSION)\"
 
 .SUFFIXES: $(OBJ)
@@ -101,5 +102,10 @@ SET_CFLAGS += -DAGA_VERSION=\"$(VERSION)\"
 all: $(AGA_OUT)
 
 .PHONY: clean
-.PHONY: clean_apro clean_python clean_www clean_aga clean_glm clean_tiff
-clean: clean_apro clean_python clean_www clean_aga clean_glm clean_tiff
+.PHONY: clean_asys clean_apro
+.PHONY: clean_python clean_www clean_glm clean_tiff
+.PHONY: clean_aga
+
+clean: clean_asys clean_apro
+clean: clean_python clean_www clean_glm clean_tiff
+clean: clean_aga

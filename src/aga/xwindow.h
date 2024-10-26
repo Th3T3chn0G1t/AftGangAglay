@@ -226,8 +226,8 @@ enum aga_result aga_window_new(
 
 	enum aga_result result;
 
-	aga_ulong_t black, white;
-	aga_ulong_t root;
+	aga_xid_t black, white;
+	aga_xid_t root;
 
 	if(!env) return AGA_RESULT_BAD_PARAM;
 	if(!win) return AGA_RESULT_BAD_PARAM;
@@ -349,7 +349,7 @@ enum aga_result aga_window_set_cursor(
 		struct aga_window_device* env, struct aga_window* win,
 		aga_bool_t visible, aga_bool_t captured) {
 
-	aga_ulong_t cur;
+	aga_xid_t cur;
 
 	if(!env) return AGA_RESULT_BAD_PARAM;
 	if(!win) return AGA_RESULT_BAD_PARAM;
@@ -410,7 +410,7 @@ enum aga_result aga_window_device_poll(
 		if(!ret) break;
 
 		if(event.xclient.message_type == env->wm_protocols) {
-			aga_ulong_t atom = event.xclient.data.l[0];
+			aga_xid_t atom = event.xclient.data.l[0];
 			if(atom == env->wm_delete) {
 				*die = AGA_TRUE;
 			}
@@ -491,7 +491,7 @@ enum aga_result aga_window_device_poll(
 
 				/* Handle captured pointer. */
 				{
-					aga_ulong_t win;
+					aga_xid_t win;
 					aga_bool_t centred;
 					int x = (int) capture->width / 2;
 					int y = (int) capture->height / 2;
@@ -512,7 +512,7 @@ enum aga_result aga_window_device_poll(
 
 			case ClientMessage: {
 				if(event.xclient.message_type == env->wm_protocols) {
-					aga_ulong_t atom = event.xclient.data.l[0];
+					aga_xid_t atom = event.xclient.data.l[0];
 					if(atom == env->wm_delete) {
 						*die = AGA_TRUE;
 					}

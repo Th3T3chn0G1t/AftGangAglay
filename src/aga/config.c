@@ -181,14 +181,13 @@ void aga_sgml_end_element(struct aga_sgml_structured* me, int element_number) {
 	switch(node->type) {
 		default: break;
 		case AGA_INTEGER: {
-			aga_slong_t res;
+			aga_config_int_t res;
 			if(!string) {
 				node->data.integer = 0;
 				break;
 			}
 
-			/* TODO: `strtoll` not C89. */
-			res = strtol(node->data.string, 0, 0);
+			res = asys_native_strtol(node->data.string, 0, 0);
 			aga_free(string);
 			node->data.integer = res;
 			break;
@@ -336,7 +335,7 @@ aga_bool_t aga_config_variable(
 				break;
 			}
 			case AGA_INTEGER: {
-				*(aga_slong_t*) value = node->data.integer;
+				*(aga_config_int_t*) value = node->data.integer;
 				break;
 			}
 			case AGA_FLOAT: {
@@ -466,7 +465,10 @@ static enum aga_result aga_dumptree_int(
 					break;
 				}
 				case AGA_INTEGER: {
-					result = aga_dumpf(fp, "%lld\n", n->data.integer);
+					result = aga_dumpf(
+								fp, ASYS_NATIVE_LONG_FORMAT "\n",
+								n->data.integer);
+
 					if(result) return result;
 					break;
 				}

@@ -28,23 +28,7 @@
 # pragma warning(disable: 4668) /* Symbol not defined as macro. */
 #endif
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <ctype.h>
-#include <errno.h>
-#include <signal.h>
-
-#ifdef AGA_WANT_MATH
-# include <math.h>
-
-# ifndef M_PI
-#  define M_PI (3.14159265358979323846)
-# endif
-#endif
+#include <asys/stdc.h>
 
 #ifdef AGA_WANT_UNIX
 # undef AGA_WANT_UNIX

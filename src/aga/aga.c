@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
 								   AGA_DRAW_DEPTH | AGA_DRAW_FLAT;
 
 	aga_bool_t die = AGA_FALSE;
-	aga_ulong_t dt = 0;
+	apro_unit_t dt = 0;
 
 	const char* gl_version;
 

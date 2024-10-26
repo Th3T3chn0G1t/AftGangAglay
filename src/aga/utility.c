@@ -31,26 +31,6 @@ aga_size_t aga_strlen(const char* s) {
 	return strlen(s);
 }
 
-aga_slong_t aga_strtol(const char* s) {
-	aga_size_t i;
-	aga_size_t len = aga_strlen(s);
-	aga_slong_t ret = 0;
-
-	for(i = len; i > 0; --i) {
-		char c = s[i - 1];
-
-		if(c < '0' || c > '9') break;
-
-		ret += (c - '0') * (aga_slong_t) ((len - i) * 10);
-	}
-
-	return ret;
-}
-
-double aga_strtod(const char* s) {
-	return strtod(s, 0);
-}
-
 /* TODO: Overridable allocator. */
 
 void* aga_malloc(aga_size_t sz) {

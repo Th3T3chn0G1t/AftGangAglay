@@ -151,7 +151,7 @@ static aga_bool_t agan_mkobj_model(
 
 	{
 		aga_bool_t do_mips, tex_filter;
-		aga_slong_t v;
+		aga_config_int_t v;
 
 		result = aga_config_lookup(
 				conf->children, &filter, 1, &v, AGA_INTEGER, AGA_FALSE);
@@ -174,7 +174,7 @@ static aga_bool_t agan_mkobj_model(
 		else {
 			static const char* width = "Width";
 
-			aga_slong_t w, h;
+			aga_config_int_t w, h;
 
 			/*
 			 * TODO: "Just trusting" that this make/release pattern is safe to
@@ -262,7 +262,7 @@ static aga_bool_t agan_mkobj_model(
 			struct aga_vertex vert;
 			void* fp;
 			aga_size_t i, len;
-			aga_slong_t ver;
+			aga_config_int_t ver;
 
 			aga_free(obj->modelpath);
 			if(!(obj->modelpath = aga_strdup(path))) {
@@ -339,7 +339,7 @@ static aga_bool_t agan_mkobj_light(
 	struct aga_config_node* node = conf->children;
 	struct agan_lightdata* data;
 
-	aga_slong_t scr;
+	aga_config_int_t scr;
 	aga_size_t i, j;
 
 	double v;
@@ -352,7 +352,7 @@ static aga_bool_t agan_mkobj_light(
 	data = obj->light_data;
 
 	for(i = 0; i < node->len; ++i) {
-		aga_slong_t index;
+		aga_config_int_t index;
 		struct aga_config_node* child = &node->children[i];
 
 		if(aga_config_variable("Index", child, AGA_INTEGER, &index)) {

@@ -115,8 +115,7 @@ enum aga_result aga_resource_pack_new(
 		struct aga_resource* res = &pack->db[i];
 		struct aga_config_node* node = &pack->root.children->children[i];
 
-		aga_slong_t offset;
-		aga_slong_t size;
+		aga_config_int_t offset, size;
 
 		res->conf = node;
 		res->pack = pack;

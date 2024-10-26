@@ -6,6 +6,8 @@
 #ifndef AGA_ENVIRONMENT_H
 #define AGA_ENVIRONMENT_H
 
+#include <asys/base.h>
+
 #ifdef __has_attribute
 # if __has_attribute(noreturn)
 #  define AGA_NORETURN __attribute__((noreturn))
@@ -78,30 +80,10 @@ typedef signed char aga_schar_t;
 typedef signed short aga_sshort_t;
 typedef signed int aga_sint_t;
 
-#ifdef __GNUC__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wlong-long"
-#endif
-
-/*
- * TODO: Review all `long long' vs. `long' and see if we can eliminate misuse.
- */
-#ifdef _WIN64
-typedef unsigned long long aga_ulong_t;
-typedef signed long long aga_slong_t;
-#else
-typedef unsigned long aga_ulong_t;
-typedef signed long aga_slong_t;
-#endif
-
 /* TODO: Find a way to switch this to be era-accurate. */
-typedef signed long long aga_time_t;
+typedef asys_native_ulong_t aga_time_t;
 
-#ifdef __GNUC__
-# pragma GCC diagnostic pop
-#endif
-
-typedef aga_ulong_t aga_size_t;
+typedef asys_native_ulong_t aga_size_t;
 
 typedef aga_uchar_t aga_bool_t;
 

@@ -28,11 +28,11 @@ enum aga_result aga_graph_new(
 	graph->max = 10000;
 	graph->period = 30;
 
-	graph->running = aga_calloc(APRO_MAX, sizeof(aga_ulong_t));
+	graph->running = aga_calloc(APRO_MAX, sizeof(apro_unit_t));
 	if(!graph->running) return aga_error_system(__FILE__, "aga_calloc");
 
 	graph->histories = aga_calloc(
-			graph->segments * APRO_MAX, sizeof(aga_ulong_t));
+			graph->segments * APRO_MAX, sizeof(apro_unit_t));
 
 	if(!graph->histories) return aga_error_system(__FILE__, "aga_calloc");
 
@@ -163,7 +163,7 @@ enum aga_result aga_graph_update(
 
 	if(graph->inter >= graph->period) {
 		graph->inter = 0;
-		aga_bzero(graph->running, APRO_MAX * sizeof(aga_ulong_t));
+		aga_bzero(graph->running, APRO_MAX * sizeof(apro_unit_t));
 	}
 
 	return aga_window_swap(env, &graph->window);

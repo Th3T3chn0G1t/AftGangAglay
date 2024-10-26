@@ -460,9 +460,6 @@ static enum aga_result aga_build_conf_file(
 		 * TODO: Sort out:
 		 *		  - `%zu' did not exist until C99.
 		 *		  - `%llu' should not be used on non "modern Windows" machines.
-		 *				- Same goes for `long long' in general.
-		 *
-		 *		 Might need to make our own equivalent of `inttypes.h'.
 		 */
 		agab_(2, "Offset", "Integer", "%zu", *offset);
 
@@ -650,7 +647,7 @@ static enum aga_result aga_build_iter(
 	for(i = 0; i < input_root->len; ++i) {
 		struct aga_config_node* node = &input_root->children[i];
 
-		aga_slong_t v;
+		aga_config_int_t v;
 		const char* str = 0;
 
 		enum aga_file_kind kind = AGA_KIND_NONE;

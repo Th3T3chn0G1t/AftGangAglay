@@ -19,6 +19,8 @@ enum aga_config_node_type {
 	AGA_NONE, AGA_STRING, AGA_INTEGER, AGA_FLOAT
 };
 
+typedef asys_native_long_t aga_config_int_t;
+
 struct aga_config_node;
 struct aga_config_node {
 	char* name;
@@ -26,7 +28,7 @@ struct aga_config_node {
 	enum aga_config_node_type type;
 	union aga_config_node_data {
 		char* string;
-		aga_slong_t integer;
+		aga_config_int_t integer;
 		double flt;
 	} data;
 

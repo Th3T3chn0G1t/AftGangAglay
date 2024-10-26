@@ -9,6 +9,8 @@
 #include <aga/environment.h>
 #include <aga/result.h>
 
+#include <apro.h>
+
 struct aga_resource;
 struct aga_resource_pack;
 
@@ -31,7 +33,7 @@ struct aga_script_userdata {
 	struct aga_window* window;
 	struct aga_resource_pack* resource_pack;
 	struct aga_buttons* buttons;
-	aga_ulong_t* dt;
+	apro_unit_t* dt;
 };
 
 struct aga_script_class {
