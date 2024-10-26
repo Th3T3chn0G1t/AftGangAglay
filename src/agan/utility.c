@@ -24,12 +24,15 @@ enum aga_result agan_misc_register(struct py_env* env) {
 	if((result = aga_insertstr("PLATFORM", "x"))) return result;
 #endif
 
+	/* TODO: Var to detect dev builds. */
 #ifndef NDEBUG
 	if((result = aga_insertstr("MODE", "debug"))) return result;
 #else
 	if((result = aga_insertstr("MODE", "release"))) return result;
 #endif
 
+	/* TODO: BSD-y builds some day -- `bmake' support etc. */
+	/* TODO: IRIX-y builds some day -- IRIX `make' support etc. */
 #ifdef _MSC_VER
 	if((result = aga_insertstr("CENV", "vc"))) return result;
 #elif defined(__GNUC__)

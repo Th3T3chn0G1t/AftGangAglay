@@ -230,6 +230,7 @@ static aga_bool_t agan_mkobj_model(
 			}
 
 			{
+				/* TODO: `ScaleTex' for stretch vs. tile. */
 				int mag = tex_filter ? GL_LINEAR : GL_NEAREST;
 				int min;
 
@@ -355,6 +356,10 @@ static aga_bool_t agan_mkobj_light(
 		struct aga_config_node* child = &node->children[i];
 
 		if(aga_config_variable("Index", child, AGA_INTEGER, &index)) {
+			/*
+			 * TODO: Warn on light index reuse within a scene at draw time when
+			 * 		 In dev builds.
+			 */
 			if(index > 7 || index < 0) {
 				aga_log(
 						__FILE__, "warn: Light index `%u' out of range 0-7",

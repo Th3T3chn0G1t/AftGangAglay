@@ -40,6 +40,7 @@ struct aga_resource_pack {
 	struct aga_resource* db;
 	aga_size_t len; /* Alias for `pack->root.children->len'. */
 
+	/* TODO: This should be enabled for dev builds, not just debug builds. */
 #ifndef NDEBUG
 	aga_size_t outstanding_refs;
 #endif

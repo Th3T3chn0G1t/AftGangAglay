@@ -175,6 +175,7 @@ int main(int argc, char** argv) {
 	if(!aga_streql(opts.version, AGA_VERSION)) {
 		static const char err[] = "warn: Project version `%s' does not match "
 								  "engine version `" AGA_VERSION "'";
+
 		aga_log(__FILE__, err, opts.version);
 	}
 
