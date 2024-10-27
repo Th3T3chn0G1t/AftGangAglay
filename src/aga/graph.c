@@ -4,21 +4,19 @@
  */
 
 #include <aga/graph.h>
-#include <aga/utility.h>
-#include <aga/error.h>
 #include <aga/render.h>
 
-enum aga_result aga_graph_new(
+enum asys_result aga_graph_new(
 		struct aga_graph* graph, struct aga_window_device* env,
 		int argc, char** argv) {
 
 #ifdef AGA_DEVBUILD
-	enum aga_result result;
+	enum asys_result result;
 
-	if(!graph) return AGA_RESULT_BAD_PARAM;
+	if(!graph) return ASYS_RESULT_BAD_PARAM;
 
 	result = aga_window_new(
-				1280, 480, "Profile", env, &graph->window, AGA_TRUE,
+				1280, 480, "Profile", env, &graph->window, ASYS_TRUE,
 				argc, argv);
 
 	if(result) return result;
@@ -45,48 +43,48 @@ enum aga_result aga_graph_new(
 	(void) argv;
 #endif
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_graph_delete(
+enum asys_result aga_graph_delete(
 		struct aga_graph* graph, struct aga_window_device* env) {
 
 #ifdef AGA_DEVBUILD
-	enum aga_result result;
+	enum asys_result result;
 
-	if(!graph) return AGA_RESULT_BAD_PARAM;
+	if(!graph) return ASYS_RESULT_BAD_PARAM;
 
 	result = aga_window_delete(env, &graph->window);
 	if(result) return result;
 
-	aga_free(graph->histories);
-	aga_free(graph->heights);
-	aga_free(graph->running);
+	asys_memory_free(graph->histories);
+	asys_memory_free(graph->heights);
+	asys_memory_free(graph->running);
 #else
 	(void) graph;
 	(void) env;
 #endif
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_graph_update(
+enum asys_result aga_graph_update(
 		struct aga_graph* graph, struct aga_window_device* env) {
 
 #ifdef AGA_DEVBUILD
 	static const float clear[] = { 0.4f, 0.4f, 0.4f, 1.0f };
 
-	enum aga_result result;
+	enum asys_result result;
 
 	unsigned d = 0;
 	unsigned x = 0;
 	unsigned n = 0;
 
 	result = aga_window_select(env, &graph->window);
-	aga_error_check_soft(__FILE__, "aga_window_select", result);
+	asys_log_result(__FILE__, "aga_window_select", result);
 
 	result = aga_render_clear(clear);
-	aga_error_check_soft(__FILE__, "aga_render_clear", result);
+	asys_log_result(__FILE__, "aga_render_clear", result);
 
 	graph->inter++;
 
@@ -171,24 +169,24 @@ enum aga_result aga_graph_update(
 	(void) graph;
 	(void) env;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 #endif
 }
 
 /* TODO: Controls to select+compare certain stats by themselves/highlighted. */
-enum aga_result aga_graph_plot(
+enum asys_result aga_graph_plot(
 		struct aga_graph* graph, unsigned y, unsigned x, enum apro_section s) {
 
 #ifdef AGA_DEVBUILD
 	static const float width = 0.1f;
 	static const float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-	enum aga_result result;
-	aga_bool_t shift;
+	enum asys_result result;
+	asys_bool_t shift;
 	apro_unit_t* history;
 	apro_unit_t us = apro_stamp_us(s);
 
-	if(!graph) return AGA_RESULT_BAD_PARAM;
+	if(!graph) return ASYS_RESULT_BAD_PARAM;
 
 	shift = graph->inter >= graph->period;
 	history = &graph->histories[s * graph->segments];
@@ -197,7 +195,7 @@ enum aga_result aga_graph_plot(
 
 	/* Graph. */
 	{
-		aga_size_t i;
+		asys_size_t i;
 		double height;
 
 		for(i = 0; i < graph->segments; ++i) {
@@ -239,5 +237,5 @@ enum aga_result aga_graph_plot(
 	(void) s;
 #endif
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }

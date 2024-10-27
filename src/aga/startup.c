@@ -4,34 +4,26 @@
  */
 
 #include <aga/startup.h>
-#include <aga/log.h>
 #include <aga/pack.h>
-#include <aga/error.h>
-#include <aga/utility.h>
 #include <aga/io.h>
 #include <aga/diagnostic.h>
 
-#define AGA_WANT_UNIX
-#include <aga/std.h>
+#include <asys/log.h>
+#include <asys/getopt.h>
+#include <asys/memory.h>
 
-/* Prefer system `getopt'. */
-#ifndef AGA_HAVE_GETOPT
-# define AGA_HAVE_GETOPT
-# include <port/getopt.c>
-#endif
-
-enum aga_result aga_settings_new(
+enum asys_result aga_settings_new(
 		struct aga_settings* opts, int argc, char** argv) {
 
-	if(!opts) return AGA_RESULT_BAD_PARAM;
-	if(!argv) return AGA_RESULT_BAD_PARAM;
+	if(!opts) return ASYS_RESULT_BAD_PARAM;
+	if(!argv) return ASYS_RESULT_BAD_PARAM;
 
 #ifdef AGA_DEVBUILD
-	opts->compile = AGA_FALSE;
+	opts->compile = ASYS_FALSE;
 	opts->build_file = "agabuild.sgml";
 #endif
 	opts->config_file = "aga.sgml";
-	opts->display = aga_getenv("DISPLAY");
+	opts->display = 0;
 	opts->chdir = ".";
 	opts->audio_buffer = 1024;
 	opts->startup_script = "script/main.py";
@@ -40,22 +32,18 @@ enum aga_result aga_settings_new(
 	opts->width = 640;
 	opts->height = 480;
 	opts->title = "Aft Gang Aglay";
-	opts->mipmap_default = AGA_FALSE;
+	opts->mipmap_default = ASYS_FALSE;
 	opts->fov = 90.0f;
-	opts->audio_enabled = AGA_TRUE;
+	opts->audio_enabled = ASYS_TRUE;
 	opts->version = AGA_VERSION;
-	opts->verbose = AGA_FALSE;
-
-	aga_bzero(&opts->config, sizeof(opts->config));
+	opts->verbose = ASYS_FALSE;
 
 	/*
-	 * TODO: `vendor/libtiff/port/getopt.c' is from 1991 and should work for
-	 * 		 Us as `getopt' emulation.
-	 * 		 Could also appropriate code from MS-DOS for MS-style argparse:
-	 * 		 		https://github.com/microsoft/MS-DOS
-	 * 		 		v4.0/src/CMD/FC/FC.C:288
+	 * TODO: Remove need to zero this externally by zeroing relevant fields in
+	 * 		 Node init.
 	 */
-#ifdef AGA_HAVE_GETOPT
+	asys_memory_zero(&opts->config, sizeof(struct aga_config_node));
+
 	{
 		static const char helpmsg[] =
 			"warn: usage:\n"
@@ -73,14 +61,14 @@ enum aga_result aga_settings_new(
 					;help:
 #endif
 				{
-					aga_log(__FILE__, helpmsg, argv[0], argv[0]);
+					asys_log(__FILE__, helpmsg, argv[0], argv[0]);
 					goto break2;
 				}
 #ifdef AGA_DEVBUILD
 				case 'c': {
 					if(optind != 2) goto help;
 
-					opts->compile = AGA_TRUE;
+					opts->compile = ASYS_TRUE;
 					break;
 				}
 #endif
@@ -118,34 +106,25 @@ enum aga_result aga_settings_new(
 					extern int WWW_TraceFlag; /* From libwww. */
 					WWW_TraceFlag = 1;
 
-					opts->verbose = AGA_TRUE;
+					opts->verbose = ASYS_TRUE;
 				}
 			}
 		}
 		break2:;
 	}
 
-# ifdef AGA_HAVE_UNISTD
+	/* TODO: Fix this. */
+#ifdef AGA_HAVE_UNISTD
 	if(chdir(opts->chdir) == -1) {
 		(void) aga_error_system_path(__FILE__, "chdir", opts->chdir);
 	}
-# endif
-#else
-	(void) argc;
-	(void) argv;
 #endif
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_settings_parse_config(
+enum asys_result aga_settings_parse_config(
 		struct aga_settings* opts, struct aga_resource_pack* pack) {
-
-	enum aga_result result;
-	void* fp;
-	aga_size_t size;
-	aga_config_int_t v;
-	double fv;
 
 	static const char* enabled[] = { "Audio", "Enabled" };
 	static const char* startup[] = { "Script", "Startup" };
@@ -157,131 +136,89 @@ enum aga_result aga_settings_parse_config(
 	static const char* mipmap[] = { "Graphics", "MipmapDefault" };
 	static const char* fov[] = { "Display", "FOV" };
 
-	if(!opts) return AGA_RESULT_BAD_PARAM;
-	if(!pack) return AGA_RESULT_BAD_PARAM;
+	enum asys_result result;
+	struct asys_stream* stream;
 
-	result = aga_resource_stream(pack, opts->config_file, &fp, &size);
+	asys_size_t size;
+	aga_config_int_t v;
+	double fv;
+
+	if(!opts) return ASYS_RESULT_BAD_PARAM;
+	if(!pack) return ASYS_RESULT_BAD_PARAM;
+
+	result = aga_resource_stream(pack, opts->config_file, &stream, &size);
 	if(result) return result;
 
-	aga_config_debug_file = opts->config_file;
-
-	result = aga_config_new(fp, size, &opts->config);
+	result = aga_config_new(stream, size, &opts->config);
 	if(result) return result;
 
 	result = aga_config_lookup(
-			opts->config.children, enabled, AGA_LEN(enabled), &v, AGA_INTEGER,
-			AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+			opts->config.children, enabled, ASYS_LENGTH(enabled),
+			&v, AGA_INTEGER, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
 	if(!result) opts->audio_enabled = !!v;
 
 	result = aga_config_lookup(
-			opts->config.children, version, AGA_LEN(version), &opts->version,
-			AGA_STRING, AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+			opts->config.children, version, ASYS_LENGTH(version),
+			&opts->version, AGA_STRING, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
 
 	result = aga_config_lookup(
-			opts->config.children, title, AGA_LEN(title), &opts->title,
-			AGA_STRING, AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+			opts->config.children, title, ASYS_LENGTH(title),
+			&opts->title, AGA_STRING, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
 
 	/*
 	if(!opts->audio_dev) {
 		result = aga_config_lookup(
-				opts->config.children, device, AGA_LEN(device),
-				&opts->audio_dev, AGA_STRING, AGA_TRUE);
-		aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+				opts->config.children, device, ASYS_LENGTH(device),
+				&opts->audio_dev, AGA_STRING, ASYS_TRUE);
+		asys_log_result(__FILE__, "aga_config_lookup", result);
 	}
 	 */
 
 	result = aga_config_lookup(
-			opts->config.children, startup, AGA_LEN(startup),
-			&opts->startup_script, AGA_STRING, AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+			opts->config.children, startup, ASYS_LENGTH(startup),
+			&opts->startup_script, AGA_STRING, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
 
 	result = aga_config_lookup(
-			opts->config.children, path, AGA_LEN(path), &opts->python_path,
-			AGA_STRING, AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+			opts->config.children, path, ASYS_LENGTH(path),
+			&opts->python_path, AGA_STRING, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
 
 	result = aga_config_lookup(
-			opts->config.children, width, AGA_LEN(width), &v,
-			AGA_INTEGER, AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
-	if(!result) opts->width = (aga_size_t) v;
+			opts->config.children, width, ASYS_LENGTH(width),
+			&v, AGA_INTEGER, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
+	if(!result) opts->width = (asys_size_t) v;
 
 	result = aga_config_lookup(
-			opts->config.children, height, AGA_LEN(height), &v,
-			AGA_INTEGER, AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
-	if(!result) opts->height = (aga_size_t) v;
+			opts->config.children, height, ASYS_LENGTH(height),
+			&v, AGA_INTEGER, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
+	if(!result) opts->height = (asys_size_t) v;
 
 	result = aga_config_lookup(
-			opts->config.children, mipmap, AGA_LEN(mipmap), &v,
-			AGA_INTEGER, AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+			opts->config.children, mipmap, ASYS_LENGTH(mipmap),
+			&v, AGA_INTEGER, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
 	if(!result) opts->mipmap_default = !!v;
 
 	result = aga_config_lookup(
-			opts->config.children, fov, AGA_LEN(fov), &fv, AGA_FLOAT,
-			AGA_TRUE);
-	aga_error_check_soft(__FILE__, "aga_config_lookup", result);
+			opts->config.children, fov, ASYS_LENGTH(fov),
+			&fv, AGA_FLOAT, ASYS_TRUE);
+
+	asys_log_result(__FILE__, "aga_config_lookup", result);
 	if(!result) opts->fov = (float) fv;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
-
-#ifdef AGA_HAVE_SPAWN
-
-enum aga_result aga_prerun_hook(struct aga_settings* opts) {
-	enum aga_result result;
-
-	const char* hook[] = { "Development", "PreHook" };
-	char* program = aga_getenv("SHELL");
-	char* args[] = { 0 /* shell */, 0 /* -c */, 0 /* exec */, 0 };
-	char* project_path;
-
-	AGA_DEPRECATED("Development/PreHook", "agabuild.sgml");
-
-# ifndef AGA_DEVBUILD
-	aga_log(__FILE__, "warn: Executing pre-run hook in non-debug build");
-# endif
-
-	if(!opts) return AGA_RESULT_BAD_PARAM;
-
-	project_path = strrchr(opts->config_file, '/');
-
-# ifdef _WIN32
-	if(!program) program = "cmd.exe";
-	args[1] = "/c";
-# else
-	if(!program) program = "sh";
-	args[1] = "-c";
-# endif
-
-	args[0] = program;
-
-	result = aga_config_lookup(
-			opts->config.children, hook, AGA_LEN(hook), &args[2], AGA_STRING,
-			AGA_TRUE);
-	if(result) return result;
-
-	aga_log(__FILE__, "Executing project pre-run hook `%s'", args[2]);
-
-	if(project_path) {
-		aga_size_t len = (aga_size_t) (project_path - opts->config_file) + 1;
-
-		project_path = aga_calloc(len + 1, sizeof(char));
-		if(!project_path) return AGA_RESULT_OOM;
-
-		strncpy(project_path, opts->config_file, len);
-	}
-
-	result = aga_process_spawn(program, args, project_path);
-	aga_error_check_soft(__FILE__, "aga_process_spawn", result);
-
-	aga_free(project_path);
-
-	return AGA_RESULT_OK;
-}
-
-#endif

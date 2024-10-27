@@ -13,11 +13,11 @@
 struct aga_graph {
 	struct aga_window window;
 
-	aga_size_t segments;
-	aga_size_t max;
+	asys_size_t segments;
+	asys_size_t max;
 
-	aga_size_t period;
-	aga_size_t inter;
+	asys_size_t period;
+	asys_size_t inter;
 
 	apro_unit_t* running;
 
@@ -25,14 +25,14 @@ struct aga_graph {
 	float* heights;
 };
 
-enum aga_result aga_graph_new(
+enum asys_result aga_graph_new(
 		struct aga_graph*, struct aga_window_device*, int, char**);
 
-enum aga_result aga_graph_delete(struct aga_graph*, struct aga_window_device*);
+enum asys_result aga_graph_delete(struct aga_graph*, struct aga_window_device*);
 
-enum aga_result aga_graph_update(struct aga_graph*, struct aga_window_device*);
+enum asys_result aga_graph_update(struct aga_graph*, struct aga_window_device*);
 
-enum aga_result aga_graph_plot(
+enum asys_result aga_graph_plot(
 		struct aga_graph*, unsigned, unsigned, enum apro_section);
 
 #endif

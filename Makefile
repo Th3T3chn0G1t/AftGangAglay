@@ -84,7 +84,6 @@ SET_CFLAGS = $(SET_CFLAGS) /wd4127
 
 SET_CFLAGS = $(SET_CFLAGS) /I$(APRO) /I$(ASYS)
 SET_CFLAGS = $(SET_CFLAGS) /I$(PYI) /I$(WWWH) $(DEV_INC)
-# NOTE: Only needed for VC `getopt' emulation for now.
 SET_CFLAGS = $(SET_CFLAGS) /Ivendor$(SEP)libtiff$(SEP)
 SET_CFLAGS = $(SET_CFLAGS) /Iinclude
 

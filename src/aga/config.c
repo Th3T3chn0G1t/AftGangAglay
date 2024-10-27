@@ -3,63 +3,83 @@
  * Copyright (C) 2023, 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#include <aga/result.h>
-
-#include <aga/error.h>
 #include <aga/config.h>
-#include <aga/log.h>
-#include <aga/io.h>
-#include <aga/utility.h>
-#include <aga/std.h>
+
+#include <asys/result.h>
+#include <asys/log.h>
+#include <asys/string.h>
+#include <asys/memory.h>
+#include <asys/stream.h>
+#include <asys/error.h>
 
 /* Very nasty dependency to leak - keep it contained! */
 #include <SGML.h>
 
-/*
- * NOTE: These need to be in `strcmp' order (effectively alphabetical for us)
- */
 enum aga_sgml_node {
-	AGA_NODE_ITEM, AGA_NODE_ROOT,
-
-	AGA_ELEMENT_COUNT
+	AGA_NODE_ITEM,
+	AGA_NODE_ROOT
 };
 
-enum aga_sgml_item_attribs {
-	AGA_ITEM_NAME, AGA_ITEM_TYPE,
-
-	AGA_ITEM_ATTRIB_COUNT
+enum aga_sgml_item_attribute {
+	AGA_ITEM_NAME,
+	AGA_ITEM_TYPE
 };
 
 #define AGA_CONFIG_MAX_DEPTH (1024)
+
+#define AGA_CONFIG_INTEGER_DEFAULT (ASYS_MAKE_NATIVE_LONG(0))
+#define AGA_CONFIG_FLOAT_DEFAULT (0.0)
 
 struct aga_sgml_structured {
 	const HTStructuredClass* class;
 
 	struct aga_config_node* stack[1024];
-	aga_size_t depth;
+	asys_size_t depth;
 };
 
-const char* aga_config_debug_file = "<none>";
+void SGML_character(HTStream*, char);
+void SGML_free(HTStream*);
 
-void SGML_character(HTStream* context, char c);
+static attr aga_global_sgml_item_attributes[] = {
+		{ "name" }, /* AGA_ITEM_NAME */
+		{ "type" } /* AGA_ITEM_TYPE */
+};
 
-void SGML_free(HTStream* context);
+/* TODO: Introduce shorthand `<str>' etc. tags and `bool' type. */
+/* NOTE: Must be in `strcmp' order by-name. Effectively alphabetical order. */
+static HTTag aga_global_sgml_tags[] = {
+		/* AGA_NODE_ITEM */
+		{
+				"item",
+				aga_global_sgml_item_attributes,
+				ASYS_LENGTH(aga_global_sgml_item_attributes),
+				SGML_CDATA
+		},
 
-static aga_bool_t aga_isblank(char c) {
-	return c == ' ' || c == '\r' || c == '\t' || c == '\n';
-}
+		/* AGA_NODE_ROOT */
+		{
+				"root",
+				0,
+				0,
+				SGML_ELEMENT
+		}
+};
 
-static enum aga_result aga_sgml_push(
+static SGML_dtd aga_global_sgml_dtd = {
+		aga_global_sgml_tags, ASYS_LENGTH(aga_global_sgml_tags), 0, 0
+};
+
+static enum asys_result aga_sgml_push(
 		struct aga_sgml_structured* s, struct aga_config_node* node) {
 
-	if(!s) return AGA_RESULT_BAD_PARAM;
-	if(!node) return AGA_RESULT_BAD_PARAM;
+	if(!s) return ASYS_RESULT_BAD_PARAM;
+	if(!node) return ASYS_RESULT_BAD_PARAM;
 
-	if(s->depth > AGA_CONFIG_MAX_DEPTH) return AGA_RESULT_OOM;
+	if(s->depth > AGA_CONFIG_MAX_DEPTH) return ASYS_RESULT_OOM;
 
 	s->stack[s->depth++] = node;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 static void aga_sgml_free(struct aga_sgml_structured* me) {
@@ -71,23 +91,24 @@ static void aga_sgml_abort(struct aga_sgml_structured* me, HTError e) {
 	(void) e;
 }
 
-static void aga_sgml_putc(struct aga_sgml_structured* me, char c) {
+static void aga_sgml_put_character(struct aga_sgml_structured* me, char c) {
 	struct aga_config_node* node = me->stack[me->depth - 1];
 
-	if(node->type == AGA_NONE) return;
-	if(!node->data.string && aga_isblank(c)) return;
+	/*asys_log(__FILE__, "aga_sgml_put_character: %c", c);*/
 
-	node->data.string = aga_realloc(node->data.string, ++node->scratch + 1);
-	if(!node->data.string) {
-		aga_error_system(__FILE__, "aga_realloc");
-		return;
-	}
+	if(node->type == AGA_NONE) return;
+	if(!node->data.string && asys_character_blank(c)) return;
+
+	node->data.string = asys_memory_reallocate_safe(
+			node->data.string, ++node->scratch + 1);
+
+	if(!node->data.string) return;
 
 	node->data.string[node->scratch - 1] = c;
 	node->data.string[node->scratch] = 0;
 }
 
-static void aga_sgml_puts(HTStructured* me, const char* str) {
+static void aga_sgml_put_string(HTStructured* me, const char* str) {
 	(void) me;
 	(void) str;
 }
@@ -104,56 +125,71 @@ void aga_sgml_start_element(
 
 	struct aga_config_node* parent = me->stack[me->depth - 1];
 	struct aga_config_node* node;
-	enum aga_result result;
+	enum asys_result result;
 
-	aga_size_t sz = ++parent->len * sizeof(struct aga_config_node);
+	asys_size_t sz = ++parent->len * sizeof(struct aga_config_node);
 
-	if(!(parent->children = aga_realloc(parent->children, sz))) {
-		aga_error_system(__FILE__, "aga_realloc");
+	/*asys_log(
+			__FILE__, "aga_sgml_start_element: %d -> %s",
+			element_number, aga_global_sgml_tags[element_number].name);*/
+
+	parent->children = asys_memory_reallocate_safe(parent->children, sz);
+	if(!parent->children) {
 		parent->len = 0;
 		return;
 	}
 
 	node = &parent->children[parent->len - 1];
-	memset(node, 0, sizeof(struct aga_config_node));
+	asys_memory_zero(node, sizeof(struct aga_config_node));
 
 	if((result = aga_sgml_push(me, node))) {
-		aga_error_check_soft(__FILE__, "aga_sgml_push", result);
+		asys_log_result(__FILE__, "aga_sgml_push", result);
 		return;
 	}
 
 	switch(element_number) {
 		default: {
-			aga_log(
-					__FILE__, "warn: SGML_new: unknown element %i in `%s'",
-					element_number, aga_config_debug_file);
+			asys_log(
+					__FILE__, "warn: SGML_new: unknown element %i",
+					element_number);
+
 			return;
 		}
 		case AGA_NODE_ITEM: {
-			if(!attribute_present[AGA_ITEM_NAME]) node->name = 0;
+			if(!attribute_present[AGA_ITEM_NAME]) {
+				asys_log(
+						__FILE__, "warn: SGML_new: unnamed `<item>' element",
+						element_number);
+
+				node->name = 0;
+			}
 			else {
 				const char* value = attribute_value[AGA_ITEM_NAME];
-				if(!(node->name = aga_strdup(value))) {
-					/* TODO: Bad -- ignored OOM! */
-					aga_error_system(__FILE__, "aga_strdup");
-					return;
-				}
+				if(!(node->name = asys_string_duplicate(value))) return;
 			}
 
 			if(!attribute_present[AGA_ITEM_TYPE]) node->type = AGA_NONE;
 			else {
 				const char* typename = attribute_value[AGA_ITEM_TYPE];
-				if(aga_streql(typename, "Integer")) node->type = AGA_INTEGER;
-				else if(aga_streql(typename, "String")) {
+
+				if(asys_string_equal(typename, "Integer")) {
+					node->type = AGA_INTEGER;
+				}
+				else if(asys_string_equal(typename, "String")) {
 					node->type = AGA_STRING;
 				}
-				else if(aga_streql(typename, "Float")) node->type = AGA_FLOAT;
-				else if(aga_streql(typename, "None")) node->type = AGA_NONE;
+				else if(asys_string_equal(typename, "Float")) {
+					node->type = AGA_FLOAT;
+				}
+				else if(asys_string_equal(typename, "None")) {
+					node->type = AGA_NONE;
+				}
 				else {
-					static const char fmt[] =
-							"warn: <item> element has unknown type "
-							"`%s' in `%s'";
-					aga_log(__FILE__, fmt, typename, aga_config_debug_file);
+					asys_log(
+							__FILE__,
+							"warn: <item> element has unknown type `%s'",
+							typename);
+
 					node->type = AGA_NONE;
 				}
 			}
@@ -163,18 +199,22 @@ void aga_sgml_start_element(
 }
 
 void aga_sgml_end_element(struct aga_sgml_structured* me, int element_number) {
-	aga_size_t i;
+	asys_size_t i;
 
 	struct aga_config_node* node = me->stack[me->depth - 1];
 	char* string = node->data.string;
 
 	(void) element_number;
 
+	/*asys_log(
+			__FILE__, "aga_sgml_end_element: %d -> %s",
+			element_number, aga_global_sgml_tags[element_number].name);*/
+
 	for(i = 0; string && i <= node->scratch; ++i) {
-		aga_size_t n = node->scratch - i;
+		asys_size_t n = node->scratch - i;
 		char* c = &string[n];
 
-		if(aga_isblank(*c)) { *c = 0; }
+		if(asys_character_blank(*c)) *c = 0;
 		else if(*c) break;
 	}
 
@@ -183,24 +223,40 @@ void aga_sgml_end_element(struct aga_sgml_structured* me, int element_number) {
 		case AGA_INTEGER: {
 			aga_config_int_t res;
 			if(!string) {
-				node->data.integer = 0;
+				asys_log(
+						__FILE__,
+						"warn: No data for `Integer' config node `%s', "
+						"using default value `" ASYS_NATIVE_LONG_FORMAT "'...",
+						node->name, AGA_CONFIG_INTEGER_DEFAULT);
+
+				node->data.integer = AGA_CONFIG_INTEGER_DEFAULT;
 				break;
 			}
 
-			res = asys_native_strtol(node->data.string, 0, 0);
-			aga_free(string);
+			res = asys_string_to_native_long(node->data.string);
+			asys_memory_free(string);
 			node->data.integer = res;
+
 			break;
 		}
 		case AGA_FLOAT: {
 			double res;
+
 			if(!string) {
-				node->data.flt = 0.0;
+				asys_log(
+						__FILE__,
+						"warn: No data for `Float' config node `%s', "
+						"using default value `%lf'...",
+						node->name, AGA_CONFIG_FLOAT_DEFAULT);
+
+				node->data.flt = AGA_CONFIG_FLOAT_DEFAULT;
 				break;
 			}
-			res = strtod(node->data.string, 0);
-			aga_free(string);
+
+			res = asys_string_to_double(node->data.string);
+			asys_memory_free(string);
 			node->data.flt = res;
+
 			break;
 		}
 	}
@@ -215,75 +271,63 @@ static void aga_sgml_put_entity(HTStructured* me, int n) {
 }
 
 void HTOOM(const char* file, const char* func) {
-	aga_log(file, "%s: out of memory", func);
-	aga_error_abort();
+	asys_error_fatal(file, func, ASYS_RESULT_OOM);
 }
 
-enum aga_result aga_config_new(
-		void* fp, aga_size_t count, struct aga_config_node* root) {
+static HTStructuredClass aga_global_sgml_class = {
+		"aga-sgml",
 
-	enum aga_result result;
+		(HTStructuredFree) aga_sgml_free,
+		(HTStructuredAbort) aga_sgml_abort,
 
-	/* TODO: Introduce shorthand `<str>' etc. tags and `bool' type. */
-	static HTStructuredClass class = {
-			"",
+		(HTStructuredPutCharacter) aga_sgml_put_character,
+		(HTStructuredPutString) aga_sgml_put_string,
 
-			(void (*)(HTStructured*)) aga_sgml_free,
-			(void (*)(HTStructured*, HTError)) aga_sgml_abort,
+		(HTStructuredWrite) aga_sgml_write,
 
-			(void (*)(HTStructured*, char)) aga_sgml_putc,
+		(HTStructuredStartElement) aga_sgml_start_element,
+		(HTStructuredEndElement) aga_sgml_end_element,
 
-			(void (*)(HTStructured*, const char*)) aga_sgml_puts,
-			(void (*)(HTStructured*, const char*, unsigned)) aga_sgml_write,
+		(HTStructuredPutEntity) aga_sgml_put_entity
+};
 
-			(void (*)(
-					HTStructured*, int, const HTBool*,
-					const char**)) aga_sgml_start_element,
+/*
+ * TODO: Derive when to end the stream when the `<root>' element closes instead
+ * 		 Of needing to provide a `count'? Lets `aga_build' skip a few `stat's.
+ */
+enum asys_result aga_config_new(
+		struct asys_stream* stream, asys_size_t count,
+		struct aga_config_node* root) {
 
-			(void (*)(HTStructured*, int)) aga_sgml_end_element,
+	static struct aga_sgml_structured structured = {
+			&aga_global_sgml_class,
+			{ 0 },
+			0
+	};
 
-			(void (*)(HTStructured*, int)) aga_sgml_put_entity };
+	enum asys_result result;
 
 	HTStream* s;
-	SGML_dtd dtd;
-	HTTag tags[AGA_ELEMENT_COUNT] = { 0 };
-	attr item_attributes[AGA_ITEM_ATTRIB_COUNT];
-	struct aga_sgml_structured structured = { 0, { 0 }, 0 };
-	aga_size_t i;
+	asys_size_t i;
 
-	memset(root, 0, sizeof(struct aga_config_node));
+	structured.depth = 0;
+	asys_memory_zero(root, sizeof(struct aga_config_node));
 
 	result = aga_sgml_push(&structured, root);
 	if(result) return result;
 
-	structured.class = &class;
+	structured.class = &aga_global_sgml_class;
 
-	tags[AGA_NODE_ROOT].name = "root";
-	tags[AGA_NODE_ROOT].contents = SGML_ELEMENT;
-
-	tags[AGA_NODE_ITEM].name = "item";
-	tags[AGA_NODE_ITEM].contents = SGML_CDATA;
-	tags[AGA_NODE_ITEM].attributes = item_attributes;
-	tags[AGA_NODE_ITEM].number_of_attributes = AGA_LEN(item_attributes);
-
-	item_attributes[AGA_ITEM_NAME].name = "name";
-	item_attributes[AGA_ITEM_TYPE].name = "type";
-
-	dtd.tags = tags;
-	dtd.number_of_tags = AGA_LEN(tags);
-
-	s = SGML_new(&dtd, (HTStructured*) &structured);
+	s = SGML_new(&aga_global_sgml_dtd, (HTStructured*) &structured);
 
 	for(i = 0; i < count; ++i) {
-		int c = fgetc(fp);
+		char c;
 
-		if(c == EOF) {
-			if(feof(fp)) break;
+		if((result = asys_stream_read(stream, 0, &c, 1))) {
+			if(result == ASYS_RESULT_EOF) break;
 
 			SGML_free(s);
-
-			return aga_error_system_path(
-					__FILE__, "fgetc", aga_config_debug_file);
+			return result;
 		}
 
 		SGML_character(s, (char) c);
@@ -291,43 +335,43 @@ enum aga_result aga_config_new(
 
 	SGML_free(s);
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 void aga_free_node(struct aga_config_node* node) {
-	aga_size_t i;
+	asys_size_t i;
 
 	for(i = 0; i < node->len; ++i) {
 		aga_free_node(&node->children[i]);
 	}
 
-	if(node->type == AGA_STRING) aga_free(node->data.string);
+	if(node->type == AGA_STRING) asys_memory_free(node->data.string);
 
-	aga_free(node->name);
-	aga_free(node->children);
+	asys_memory_free(node->name);
+	asys_memory_free(node->children);
 }
 
-enum aga_result aga_config_delete(struct aga_config_node* root) {
-	if(!root) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_config_delete(struct aga_config_node* root) {
+	if(!root) return ASYS_RESULT_BAD_PARAM;
 
 	aga_free_node(root);
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-aga_bool_t aga_config_variable(
+asys_bool_t aga_config_variable(
 		const char* name, struct aga_config_node* node,
 		enum aga_config_node_type type, void* value) {
 
-	if(!name || !node || !value) return AGA_FALSE;
+	if(!name || !node || !value) return ASYS_FALSE;
 
-	if(aga_streql(node->name, name)) {
+	if(asys_string_equal(node->name, name)) {
 		if(node->type != type) {
-			aga_log(__FILE__, "warn: wrong type for field `%s'", name);
-			return AGA_TRUE;
+			asys_log(__FILE__, "warn: wrong type for field `%s'", name);
+			return ASYS_TRUE;
 		}
 		switch(type) {
-			default:; AGA_FALLTHROUGH;
+			default:; ASYS_FALLTHROUGH;
 			/* FALLTHROUGH */
 			case AGA_NONE: break;
 			case AGA_STRING: {
@@ -343,25 +387,25 @@ aga_bool_t aga_config_variable(
 				break;
 			}
 		}
-		return AGA_TRUE;
+		return ASYS_TRUE;
 	}
 
-	return AGA_FALSE;
+	return ASYS_FALSE;
 }
 
-enum aga_result aga_config_lookup_raw(
-		struct aga_config_node* root, const char** names, aga_size_t count,
+enum asys_result aga_config_lookup_raw(
+		struct aga_config_node* root, const char** names, asys_size_t count,
 		struct aga_config_node** out) {
 
-	aga_size_t i;
+	asys_size_t i;
 
-	if(!root) return AGA_RESULT_BAD_PARAM;
-	if(!names) return AGA_RESULT_BAD_PARAM;
-	if(!out) return AGA_RESULT_BAD_PARAM;
+	if(!root) return ASYS_RESULT_BAD_PARAM;
+	if(!names) return ASYS_RESULT_BAD_PARAM;
+	if(!out) return ASYS_RESULT_BAD_PARAM;
 
 	if(count == 0) {
 		*out = root;
-		return AGA_RESULT_OK;
+		return ASYS_RESULT_OK;
 	}
 
 	for(i = 0; i < root->len; ++i) {
@@ -369,148 +413,162 @@ enum aga_result aga_config_lookup_raw(
 
 		if(!node || !node->name) continue;
 
-		if(aga_streql(*names, node->name)) {
-			enum aga_result result = aga_config_lookup_raw(
+		if(asys_string_equal(*names, node->name)) {
+			enum asys_result result = aga_config_lookup_raw(
 					node, names + 1, count - 1, out);
+
 			if(!result) return result;
 		}
 	}
 
-	return AGA_RESULT_MISSING_KEY;
+	return ASYS_RESULT_MISSING_KEY;
 }
 
-static void aga_conftree_debug_name(
-		const char** names, aga_size_t count, aga_fixed_buf_t* buf) {
+static void aga_config_debug_name(
+		const char** names, asys_size_t count, asys_fixed_buffer_t* buffer) {
 
-	aga_size_t i;
+	asys_size_t i;
 
 	for(i = 0; i < count; ++i) {
-		strcat(*buf, names[i]);
-		if(i < count - 1) strcat(*buf, "/");
+		asys_string_concatenate(*buffer, names[i]);
+
+		if(i < count - 1) asys_string_concatenate(*buffer, "/");
 	}
 }
 
-enum aga_result aga_config_lookup(
-		struct aga_config_node* root, const char** names, aga_size_t count,
-		void* value, enum aga_config_node_type type, aga_bool_t err) {
+enum asys_result aga_config_lookup(
+		struct aga_config_node* root, const char** names, asys_size_t count,
+		void* value, enum aga_config_node_type type, asys_bool_t do_error) {
 
-	enum aga_result result;
+	enum asys_result result;
 	struct aga_config_node* node;
 
-	if(!root) return AGA_RESULT_BAD_PARAM;
-	if(!names) return AGA_RESULT_BAD_PARAM;
-	if(!value) return AGA_RESULT_BAD_PARAM;
+	if(!root) return ASYS_RESULT_BAD_PARAM;
+	if(!names) return ASYS_RESULT_BAD_PARAM;
+	if(!value) return ASYS_RESULT_BAD_PARAM;
 
-	if(err) result = aga_config_lookup_check(root, names, count, &node);
+	if(do_error) result = aga_config_lookup_check(root, names, count, &node);
 	else result = aga_config_lookup_raw(root, names, count, &node);
+
 	if(result) return result;
 
-	if(aga_config_variable(node->name, node, type, value)) return AGA_RESULT_OK;
-	else return AGA_RESULT_BAD_TYPE;
+	if(aga_config_variable(node->name, node, type, value)) return ASYS_RESULT_OK;
+	else return ASYS_RESULT_BAD_TYPE;
 }
 
-enum aga_result aga_config_lookup_check(
-		struct aga_config_node* root, const char** names, aga_size_t count,
+enum asys_result aga_config_lookup_check(
+		struct aga_config_node* root, const char** names, asys_size_t count,
 		struct aga_config_node** out) {
 
-	enum aga_result result = aga_config_lookup_raw(root, names, count, out);
+	enum asys_result result = aga_config_lookup_raw(root, names, count, out);
 	if(result) {
-		aga_fixed_buf_t buf = { 0 };
-		aga_conftree_debug_name(names, count, &buf);
+		asys_fixed_buffer_t buffer = { 0 };
+		aga_config_debug_name(names, count, &buffer);
 
-		aga_log(__FILE__, "err: Key `%s' not found in conf tree", buf);
+		asys_log(__FILE__, "err: Key `%s' not found in config tree", buffer);
 	}
 
 	return result;
 }
 
-static enum aga_result aga_dumpf(void* fp, const char* fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-
-	if(vfprintf(fp, fmt, ap) < 0) {
-		va_end(ap);
-		return aga_error_system(__FILE__, "vfprintf");
-	}
-
-	va_end(ap);
-	return AGA_RESULT_OK;
-}
-
-static enum aga_result aga_dumptree_int(
-		struct aga_config_node* node, void* fp, aga_size_t depth) {
-
 #ifdef AGA_DEVBUILD
-	enum aga_result result;
-	aga_size_t i;
+static enum asys_result aga_config_dump_tree(
+		struct aga_config_node* node, struct asys_stream* stream,
+		asys_size_t depth) {
+
+	static const char item[] = "<item name=\"%s\" type=\"%s\">\n";
+	static const char* type_names[] = { "None", "String", "Integer", "Float" };
+
+	enum asys_result result;
+	asys_size_t i;
 
 	for(i = 0; i < node->len; ++i) {
-		static const char fmt[] = "<item name=\"%s\" type=\"%s\">\n";
-		static const char* tnames[] = { "None", "String", "Integer", "Float" };
+		struct aga_config_node* child = &node->children[i];
+		const char* type = type_names[child->type];
+		const char* name = child->name ? child->name : "(none)";
 
-		struct aga_config_node* n = &node->children[i];
-		const char* tname = tnames[n->type];
-		const char* nname = n->name ? n->name : "(none)";
+		result = asys_stream_write_characters(stream, '\t', depth);
+		if(result) return result;
 
-		if((result = aga_file_print_characters('\t', depth, fp))) return result;
-		if((result = aga_dumpf(fp, fmt, nname, tname))) return result;
-		if(n->type) {
-			if((result = aga_file_print_characters('\t', depth + 1, fp))) return result;
-			switch(n->type) {
+		result = asys_stream_write_format(stream, item, name, type);
+		if(result) return result;
+
+		if(child->type) {
+			result = asys_stream_write_characters(stream, '\t', depth + 1);
+			if(result) return result;
+
+			switch(child->type) {
 				default: break;
 				case AGA_STRING: {
-					const char* s = n->data.string ? n->data.string : "";
-					result = aga_dumpf(fp, "%s\n", s);
+					const char* string;
+					string = child->data.string ? child->data.string : "";
+
+					result = asys_stream_write_format(stream, "%s\n", string);
 					if(result) return result;
+
 					break;
 				}
 				case AGA_INTEGER: {
-					result = aga_dumpf(
-								fp, ASYS_NATIVE_LONG_FORMAT "\n",
-								n->data.integer);
+					result = asys_stream_write_format(
+							stream, ASYS_NATIVE_LONG_FORMAT "\n",
+							child->data.integer);
 
 					if(result) return result;
+
 					break;
 				}
 				case AGA_FLOAT: {
-					result = aga_dumpf(fp, "%lf\n", n->data.flt);
+					result = asys_stream_write_format(
+							stream, "%lf\n", child->data.flt);
+
 					if(result) return result;
+
 					break;
 				}
 			}
 		}
-		if((result = aga_dumptree_int(n, fp, depth + 1))) return result;
-		if((result = aga_file_print_characters('\t', depth, fp))) return result;
-		if((result = aga_dumpf(fp, "</item>\n"))) return result;
+
+		result = aga_config_dump_tree(child, stream, depth + 1);
+		if(result) return result;
+
+		result = asys_stream_write_characters(stream, '\t', depth);
+		if(result) return result;
+
+		result = asys_stream_write_format(stream, "</item>\n");
+		if(result) return result;
 	}
 
-	return AGA_RESULT_OK;
-#else
-	(void) node;
-	(void) fp;
-	(void) depth;
-
-	aga_log(
-			__FILE__,
-			"err: Serialising conf trees is only supported in dev builds");
-
-	return AGA_RESULT_BAD_OP;
-#endif
+	return ASYS_RESULT_OK;
 }
+#endif
 
 /*
  * TODO: Make generic tree traversal callback-based function to decrease code
  * 		 Duplication in here.
  */
-enum aga_result aga_config_dump(struct aga_config_node* root, void* fp) {
-	enum aga_result result;
+enum asys_result aga_config_dump(
+		struct aga_config_node* root, struct asys_stream* stream) {
 
-	if(!root) return AGA_RESULT_BAD_PARAM;
-	if(!fp) return AGA_RESULT_BAD_PARAM;
+#ifdef AGA_DEVBUILD
+	enum asys_result result;
 
-	if((result = aga_dumpf(fp, "<root>\n"))) return result;
-	if((result = aga_dumptree_int(root, fp, 1))) return result;
-	if((result = aga_dumpf(fp, "</root>"))) return result;
+	if(!root) return ASYS_RESULT_BAD_PARAM;
+	if(!stream) return ASYS_RESULT_BAD_PARAM;
 
-	return AGA_RESULT_OK;
+	result = asys_stream_write_format(stream, "<root>\n");
+	if(result) return result;
+
+	if((result = aga_config_dump_tree(root, stream, 1))) return result;
+
+	result = asys_stream_write_format(stream, "</root>\n");
+	if(result) return result;
+
+
+	return ASYS_RESULT_OK;
+#else
+	(void) root;
+	(void) stream;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#endif
 }

@@ -12,7 +12,7 @@ PYOH = $(PYH)object$(SEP)
 PYMH = $(PYH)module$(SEP)
 
 PY1 = $(PY)acceler.c $(PY)ceval.c $(PY)compile.c $(PY)errors.c $(PY)graminit.c
-PY2 = $(PY)import.c $(PY)listnode.c $(PY)state.c $(PY)types.c $(PY)node.c
+PY2 = $(PY)import.c $(PY)state.c $(PY)types.c $(PY)node.c
 PY3 = $(PY)object.c $(PY)parser.c $(PY)parsetok.c $(PY)tokenizer.c
 PY4 = $(PY)traceback.c $(PY)pythonmain.c $(PY)evalops.c
 
@@ -25,7 +25,7 @@ PYM1 = $(PYM)builtin.c $(PYM)math.c
 PYH1 = $(PYH)bitset.h $(PYH)ceval.h $(PYH)opcode.h $(PYH)import.h $(PYH)types.h
 PYH2 = $(PYH)compile.h $(PYH)env.h $(PYH)errors.h $(PYH)state.h $(PYH)token.h
 PYH3 = $(PYH)metagrammar.h $(PYH)node.h $(PYH)object.h $(PYH)grammar.h
-PYH4 = $(PYH)parser.h $(PYH)pgen.h $(PYH)result.h $(PYH)std.h $(PYH)parsetok.h
+PYH4 = $(PYH)parser.h $(PYH)pgen.h $(PYH)std.h $(PYH)parsetok.h
 PYH5 = $(PYH)tokenizer.h $(PYH)traceback.h
 PYH6 = $(PYH1) $(PYH2) $(PYH3) $(PYH4) $(PYH5)
 
@@ -43,11 +43,11 @@ PY_OUT = vendor$(SEP)$(LIB)python$(A)
 
 $(PY_OBJ): $(PY_HDR)
 
-$(PY_OUT): $(APRO_OUT)
+$(PY_OUT): $(ASYS_OUT) $(APRO_OUT)
 $(PY_OUT): $(PY_OBJ)
 	$(AR)
 
-PGEN1 = $(PY)pgenmain.c $(PY)acceler.c $(PY)listnode.c $(PY)printgrammar.c
+PGEN1 = $(PY)pgenmain.c $(PY)acceler.c $(PY)printgrammar.c
 PGEN2 = $(PY)node.c $(PY)parser.c $(PY)parsetok.c $(PY)tokenizer.c $(PY)pgen.c
 PGEN3 = $(PY)bitset.c $(PY)firstsets.c $(PY)grammar.c $(PY)metagrammar.c
 
@@ -58,6 +58,7 @@ PGEN_OUT = $(PY)pgenmain$(EXE)
 
 $(PGEN_SRC): $(PY_HDR)
 
+$(PGEN_OUT): $(ASYS_OUT)
 $(PGEN_OUT): $(PGEN_OBJ)
 	$(CCLD)
 

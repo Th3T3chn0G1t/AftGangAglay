@@ -12,8 +12,8 @@
 
 #define AGA_FONT_LIST_BASE (1000)
 
-#include <aga/environment.h>
-#include <aga/result.h>
+#include <asys/base.h>
+#include <asys/result.h>
 
 #ifdef _WIN32
 # include <aga/sys/win32/windowdata.h>
@@ -22,7 +22,7 @@
 #endif
 
 struct aga_keymap {
-    aga_bool_t* states;
+    asys_bool_t* states;
 };
 
 /* TODO: Use this for keystrokes and button presses. */
@@ -54,27 +54,27 @@ struct aga_pointer {
  * 		 Of each printable character (i.e. `glCallList('a')') with the list
  * 		 Base `AGA_FONT_LIST_BASE'.
  */
-enum aga_result aga_window_device_new(struct aga_window_device*, const char*);
-enum aga_result aga_window_device_delete(struct aga_window_device*);
+enum asys_result aga_window_device_new(struct aga_window_device*, const char*);
+enum asys_result aga_window_device_delete(struct aga_window_device*);
 
-enum aga_result aga_window_device_poll(
+enum asys_result aga_window_device_poll(
 		struct aga_window_device*, struct aga_keymap*, struct aga_window*,
-		struct aga_pointer*, aga_bool_t*, struct aga_buttons*);
+		struct aga_pointer*, asys_bool_t*, struct aga_buttons*);
 
-enum aga_result aga_keymap_new(struct aga_keymap*, struct aga_window_device*);
-enum aga_result aga_keymap_delete(struct aga_keymap*);
+enum asys_result aga_keymap_new(struct aga_keymap*, struct aga_window_device*);
+enum asys_result aga_keymap_delete(struct aga_keymap*);
 
-enum aga_result aga_keymap_lookup(struct aga_keymap*, unsigned, aga_bool_t*);
+enum asys_result aga_keymap_lookup(struct aga_keymap*, unsigned, asys_bool_t*);
 
-enum aga_result aga_window_new(
-		aga_size_t, aga_size_t, const char*,
+enum asys_result aga_window_new(
+		asys_size_t, asys_size_t, const char*,
 		struct aga_window_device*, struct aga_window*,
-        aga_bool_t, int, char**);
+        asys_bool_t, int, char**);
 
-enum aga_result aga_window_delete(
+enum asys_result aga_window_delete(
 		struct aga_window_device*, struct aga_window*);
 
-enum aga_result aga_window_select(
+enum asys_result aga_window_select(
 		struct aga_window_device*, struct aga_window*);
 
 /*
@@ -85,13 +85,13 @@ enum aga_result aga_window_select(
  * 		 Mouse to the left across your entire desk would continue to report
  * 		 (-1, 0) and would not hover any other Windows to the left of `win'.
  */
-enum aga_result aga_window_set_cursor(
-		struct aga_window_device*, struct aga_window*, aga_bool_t, aga_bool_t);
+enum asys_result aga_window_set_cursor(
+		struct aga_window_device*, struct aga_window*, asys_bool_t, asys_bool_t);
 
-enum aga_result aga_window_swap(struct aga_window_device*, struct aga_window*);
+enum asys_result aga_window_swap(struct aga_window_device*, struct aga_window*);
 
-enum aga_result aga_dialog(const char*, const char*, aga_bool_t*, aga_bool_t);
-enum aga_result aga_dialog_file(char**);
-enum aga_result aga_shell_open(const char*);
+enum asys_result aga_dialog(const char*, const char*, asys_bool_t*, asys_bool_t);
+enum asys_result aga_dialog_file(char**);
+enum asys_result aga_shell_open(const char*);
 
 #endif

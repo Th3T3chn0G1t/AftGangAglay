@@ -6,13 +6,13 @@
 #include <agan/utility.h>
 
 #include <aga/startup.h>
-#include <aga/log.h>
+#include <asys/log.h>
 #include <aga/script.h>
 
 #include <apro.h>
 
-enum aga_result agan_misc_register(struct py_env* env) {
-	enum aga_result result;
+enum asys_result agan_misc_register(struct py_env* env) {
+	enum asys_result result;
 
 	(void) env;
 
@@ -41,7 +41,7 @@ enum aga_result agan_misc_register(struct py_env* env) {
 	if((result = aga_insertstr("CENV", "std"))) return result;
 #endif
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 struct py_object* agan_getconf(
@@ -60,34 +60,34 @@ struct py_object* agan_getconf(
 		return aga_arg_error("getconf", "list");
 	}
 
-	v = agan_scriptconf(&opts->config, AGA_TRUE, args);
+	v = agan_scriptconf(&opts->config, ASYS_TRUE, args);
 
 	apro_stamp_end(APRO_SCRIPTGLUE_GETCONF);
 
 	return v;
 }
 
-static void agan_log_object(struct py_object* op, const char* loc) {
+static void agan_log_object(struct py_object* op, const char* file) {
 	switch(op->type) {
 		default: {
 			/* TODO: Re-implement `str()` for all objects. */
-			aga_log(loc, "<object @%p>", (void*) op);
+			asys_log(file, "<object @%p>", (void*) op);
 			break;
 		}
 
 		case PY_TYPE_STRING: {
-			aga_log(loc, py_string_get(op));
+			asys_log(file, py_string_get(op));
 			break;
 		}
 
 		/* TODO: Implement `py_string_cat' of non-string objects. */
 		case PY_TYPE_FLOAT: {
-			aga_log(loc, "%lf", py_float_get(op));
+			asys_log(file, "%lf", py_float_get(op));
 			break;
 		}
 
 		case PY_TYPE_INT: {
-			aga_log(loc, "%llu", py_int_get(op));
+			asys_log(file, "%llu", py_int_get(op));
 			break;
 		}
 	}
@@ -97,7 +97,7 @@ struct py_object* agan_log(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
 	unsigned i;
-	const char* loc;
+	const char* file;
 
 	(void) env;
 	(void) self;
@@ -109,7 +109,7 @@ struct py_object* agan_log(
 		return aga_arg_error("log", "object...");
 	}
 
-	loc = py_string_get(env->current->code->filename);
+	file = py_string_get(env->current->code->filename);
 
 	if(py_is_varobject(args) && args->type != PY_TYPE_STRING) {
 		for(i = 0; i < py_varobject_size(args); ++i) {
@@ -118,14 +118,14 @@ struct py_object* agan_log(
 			 *       This produces.
 			 */
 			if(args->type == PY_TYPE_LIST) {
-				agan_log_object(py_list_get(args, i), loc);
+				agan_log_object(py_list_get(args, i), file);
 			}
 			else if(args->type == PY_TYPE_TUPLE) {
-				agan_log_object(py_tuple_get(args, i), loc);
+				agan_log_object(py_tuple_get(args, i), file);
 			}
 		}
 	}
-	else agan_log_object(args, loc);
+	else agan_log_object(args, file);
 
 	apro_stamp_end(APRO_SCRIPTGLUE_LOG);
 
@@ -135,7 +135,7 @@ struct py_object* agan_log(
 struct py_object* agan_die(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	aga_bool_t* die = AGA_GET_USERDATA(env)->die;
+	asys_bool_t* die = AGA_GET_USERDATA(env)->die;
 
 	(void) env;
 	(void) self;
@@ -144,7 +144,7 @@ struct py_object* agan_die(
 
 	if(args) return aga_arg_error("die", "none");
 
-	*die = AGA_TRUE;
+	*die = ASYS_TRUE;
 
 	apro_stamp_end(APRO_SCRIPTGLUE_DIE);
 

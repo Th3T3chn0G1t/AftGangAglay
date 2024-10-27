@@ -10,14 +10,14 @@
 #include <aga/window.h>
 #include <aga/gl.h>
 #include <aga/draw.h>
-#include <aga/log.h>
+#include <asys/log.h>
 #include <aga/diagnostic.h>
 #include <aga/render.h>
 
 #include <apro.h>
 
-enum aga_result agan_draw_register(struct py_env* env) {
-	enum aga_result result;
+enum asys_result agan_draw_register(struct py_env* env) {
+	enum asys_result result;
 
 	(void) env;
 
@@ -37,7 +37,7 @@ enum aga_result agan_draw_register(struct py_env* env) {
 	}
 	if((result = aga_insertint("DEPTHBUF", AGAN_SURFACE_DEPTH))) return result;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 struct py_object* agan_setcam(
@@ -45,7 +45,7 @@ struct py_object* agan_setcam(
 
 	struct py_object* t;
 	struct py_object* mode;
-	aga_bool_t b;
+	asys_bool_t b;
 	double ar;
 
 	struct aga_settings* opts = AGA_GET_USERDATA(env)->opts;
@@ -85,7 +85,7 @@ struct py_object* agan_setcam(
 	if(aga_script_gl_err("glMatrixMode")) return 0;
 	glLoadIdentity();
 	if(aga_script_gl_err("glLoadIdentity")) return 0;
-	if(agan_settransmat(t, AGA_TRUE)) return 0;
+	if(agan_settransmat(t, ASYS_TRUE)) return 0;
 
 	apro_stamp_end(APRO_SCRIPTGLUE_SETCAM);
 
@@ -187,7 +187,7 @@ struct py_object* agan_fogcol(
 		return aga_arg_error("fogcol", "list");
 	}
 
-	for(i = 0; i < AGA_LEN(col); ++i) {
+	for(i = 0; i < ASYS_LENGTH(col); ++i) {
 		col[i] = (float) py_float_get(py_list_get(args, i));
 	}
 
@@ -216,7 +216,7 @@ struct py_object* agan_clear(
 		return aga_arg_error("clear", "float[4]");
 	}
 
-	for(i = 0; i < AGA_LEN(color); ++i) {
+	for(i = 0; i < ASYS_LENGTH(color); ++i) {
 		color[i] = (float) py_float_get(py_list_get(args, i));
 	}
 
@@ -287,10 +287,10 @@ struct py_object* agan_shadeflat(
 struct py_object* agan_getpix(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	static aga_uint_t surface_names[] = {
+	static asys_uint_t surface_names[] = {
 			GL_FRONT, GL_BACK, GL_STENCIL, GL_DEPTH };
 
-	aga_uchar_t pix[3];
+	asys_uchar_t pix[3];
 	py_value_t x, y;
 	unsigned i;
 	int h;
@@ -323,7 +323,7 @@ struct py_object* agan_getpix(
 			py_value_t v = py_int_get(target);
 
 			if(v < AGAN_SURFACE_FRONT || v > AGAN_SURFACE_DEPTH) {
-				aga_log(__FILE__, "err: Surface name out of range `%u'", v);
+				asys_log(__FILE__, "err: Surface name out of range `%u'", v);
 				py_error_set_badarg();
 				return 0;
 			}
@@ -342,9 +342,9 @@ struct py_object* agan_getpix(
 	glReadPixels((int) x, h, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pix);
 	if(aga_script_gl_err("glReadPixels")) return 0;
 
-	if(!(retval = py_list_new(AGA_LEN(pix)))) return py_error_set_nomem();
+	if(!(retval = py_list_new(ASYS_LENGTH(pix)))) return py_error_set_nomem();
 
-	for(i = 0; i < AGA_LEN(pix); ++i) {
+	for(i = 0; i < ASYS_LENGTH(pix); ++i) {
 		py_list_set(retval, i, py_int_new(pix[i]));
 	}
 
@@ -414,7 +414,7 @@ struct py_object* agan_line3d(
 				"line3d", "float[3], float[3], float and float[3]");
 	}
 
-	for(i = 0; i < AGA_LEN(fromf); ++i) {
+	for(i = 0; i < ASYS_LENGTH(fromf); ++i) {
 		fromf[i] = py_float_get(py_list_get(from, i));
 		tof[i] = py_float_get(py_list_get(to, i));
 

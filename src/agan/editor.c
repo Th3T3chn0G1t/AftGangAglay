@@ -10,13 +10,9 @@
 #include <aga/pack.h>
 #include <aga/startup.h>
 #include <aga/config.h>
-#include <aga/error.h>
-#include <aga/utility.h>
 #include <aga/window.h>
 
-#include <aga/log.h>
-#define AGA_WANT_UNIX
-#include <aga/std.h>
+#include <asys/log.h>
 
 /*
  * "Editor" functions are isolated here as they should not be callable in
@@ -53,7 +49,7 @@
 static struct py_object* agan_killpack(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	enum aga_result result;
+	enum asys_result result;
 	struct aga_resource_pack* pack = AGA_GET_USERDATA(env)->resource_pack;
 
 	(void) env;
@@ -74,7 +70,7 @@ static struct py_object* agan_killpack(
 static struct py_object* agan_mkpack(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	enum aga_result result;
+	enum asys_result result;
 	struct aga_resource_pack* pack = AGA_GET_USERDATA(env)->resource_pack;
 	struct aga_settings* opts = AGA_GET_USERDATA(env)->opts;
 
@@ -92,7 +88,7 @@ static struct py_object* agan_mkpack(
 static struct py_object* agan_dumpobj(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	enum aga_result result;
+	enum asys_result result;
 
 	struct py_object* objp;
 	struct py_object* pathp;
@@ -143,7 +139,7 @@ static struct py_object* agan_dumpobj(
 				elem[1] = agan_xyz[j];
 
 				result = aga_config_lookup_check(
-						node.children, elem, AGA_LEN(elem), &n);
+						node.children, elem, ASYS_LENGTH(elem), &n);
 				if(aga_script_err("aga_config_lookup_check", result)) return 0;
 
 				if((o = py_list_get(l, j))->type != PY_TYPE_FLOAT) {
@@ -165,7 +161,7 @@ static struct py_object* agan_dumpobj(
 		result = aga_config_lookup_check(node.children, &model, 1, &n);
 		if(aga_script_err("aga_config_lookup_check", result)) return 0;
 
-		aga_free(n->data.string);
+		asys_memory_free(n->data.string);
 		n->data.string = aga_strdup(obj->modelpath);
 	}
 
@@ -207,13 +203,13 @@ static struct py_object* agan_fdiag(
 	if(aga_script_err("aga_dialog_file", aga_dialog_file(&path))) return 0;
 
 	if(!(str = py_string_new(path))) {
-		aga_free(path);
+		asys_memory_free(path);
 
 		py_error_set_nomem();
 		return 0;
 	}
 
-	aga_free(path);
+	asys_memory_free(path);
 
 	return str;
 }
@@ -223,7 +219,7 @@ static struct py_object* agan_setobjmdl(
 
 	static const char* model = "Model";
 
-	enum aga_result result;
+	enum asys_result result;
 
 	struct aga_config_node root;
 	struct aga_config_node* node;
@@ -259,7 +255,7 @@ static struct py_object* agan_setobjmdl(
 	 * TODO: We don't validate that the conf node is the correct type here nor
 	 * 		 Above.
 	 */
-	aga_free(node->data.string);
+	asys_memory_free(node->data.string);
 	node->data.string = aga_strdup(path);
 
 	/* TODO: Soft reload object model here. Delete old drawlist etc. */
@@ -268,7 +264,7 @@ static struct py_object* agan_setobjmdl(
 }
 #endif
 
-enum aga_result agan_ed_register(struct py_env* env) {
+enum asys_result agan_ed_register(struct py_env* env) {
 #ifdef AGA_DEVBUILD
 # define aga_(name) { #name, agan_##name }
 	static const struct py_methodlist methods[] = {
@@ -289,18 +285,18 @@ enum aga_result agan_ed_register(struct py_env* env) {
 	 */
 	if(!(ed = py_module_new_methods(env, "_ed", methods))) {
 		aga_script_engine_trace();
-		return AGA_RESULT_ERROR;
+		return ASYS_RESULT_ERROR;
 	}
 #else
 	(void) env;
 
 	if(!(ed = py_int_new(0))) {
 		aga_script_engine_trace();
-		return AGA_RESULT_ERROR;
+		return ASYS_RESULT_ERROR;
 	}
 #endif
 
-	if(py_dict_insert(agan_dict, "ed", ed) == -1) return AGA_RESULT_ERROR;
+	if(py_dict_insert(agan_dict, "ed", ed) == -1) return ASYS_RESULT_ERROR;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }

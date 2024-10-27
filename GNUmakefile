@@ -91,6 +91,7 @@ include src/aga.mk
 
 SET_CFLAGS += $(GL_CFLAGS)
 SET_CFLAGS += -I$(APRO) -I$(ASYSI) -I$(PYI) -I$(WWWH) $(DEV_INC) -Iinclude
+SET_CFLAGS += -Ivendor$(SEP)libtiff$(SEP)
 SET_CFLAGS += -DAGA_VERSION=\"$(VERSION)\"
 
 .SUFFIXES: $(OBJ)

@@ -10,14 +10,14 @@
 
 #include <aga/draw.h>
 #include <aga/window.h>
-#include <aga/log.h>
-#include <aga/std.h>
-#include <aga/error.h>
 #include <aga/gl.h>
+
+#include <asys/log.h>
+#include <asys/string.h>
 
 static enum aga_draw_flags aga_global_draw_flags = 0;
 
-enum aga_result aga_draw_set(enum aga_draw_flags flags) {
+enum asys_result aga_draw_set(enum aga_draw_flags flags) {
 	static const char* name[] = { "glDisable", "glEnable" };
 #ifdef _WIN32
 	static void (APIENTRY *func[2])(GLenum);
@@ -36,8 +36,8 @@ enum aga_result aga_draw_set(enum aga_draw_flags flags) {
 			{ AGA_DRAW_DEPTH, GL_DEPTH_TEST }
 	};
 
-	enum aga_result result;
-	aga_size_t i;
+	enum asys_result result;
+	asys_size_t i;
 
 	func[0] = glDisable;
 	func[1] = glEnable;
@@ -48,23 +48,23 @@ enum aga_result aga_draw_set(enum aga_draw_flags flags) {
 	result = aga_draw_fidelity(!!(flags & AGA_DRAW_FIDELITY));
 	if(result) return result;
 
-	for(i = 0; i < AGA_LEN(flag); ++i) {
-		aga_bool_t x = !!(flags & flag[i].flag);
+	for(i = 0; i < ASYS_LENGTH(flag); ++i) {
+		asys_bool_t x = !!(flags & flag[i].flag);
 		func[x](flag[i].cap);
 		if((result = aga_error_gl(__FILE__, name[x]))) return result;
 	}
 
 	aga_global_draw_flags = flags;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 enum aga_draw_flags aga_draw_get(void) {
 	return aga_global_draw_flags;
 }
 
-enum aga_result aga_draw_push(void) {
-	enum aga_result result;
+enum asys_result aga_draw_push(void) {
+	enum asys_result result;
 
 	glMatrixMode(GL_MODELVIEW);
 	if((result = aga_error_gl(__FILE__, "glMatrixMode"))) return result;
@@ -88,11 +88,11 @@ enum aga_result aga_draw_push(void) {
 	glLoadIdentity();
 	if((result = aga_error_gl(__FILE__, "glLoadIdentity"))) return result;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_draw_pop(void) {
-	enum aga_result result;
+enum asys_result aga_draw_pop(void) {
+	enum asys_result result;
 
 	glMatrixMode(GL_MODELVIEW);
 	if((result = aga_error_gl(__FILE__, "glMatrixMode"))) return result;
@@ -106,10 +106,10 @@ enum aga_result aga_draw_pop(void) {
 	glPopMatrix();
 	if((result = aga_error_gl(__FILE__, "glPushMatrix"))) return result;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_draw_fidelity(aga_bool_t hq) {
+enum asys_result aga_draw_fidelity(asys_bool_t hq) {
 	static const unsigned targets[] = {
 			GL_PERSPECTIVE_CORRECTION_HINT,
 			GL_POINT_SMOOTH_HINT,
@@ -118,39 +118,70 @@ enum aga_result aga_draw_fidelity(aga_bool_t hq) {
 			GL_FOG_HINT
 	};
 
-	enum aga_result result;
-	aga_size_t i;
+	enum asys_result result;
+	asys_size_t i;
 
-	for(i = 0; i < AGA_LEN(targets); ++i) {
+	for(i = 0; i < ASYS_LENGTH(targets); ++i) {
 		glHint(targets[i], hq ? GL_NICEST : GL_FASTEST);
 		if((result = aga_error_gl(__FILE__, "glHint"))) return result;
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_renderer_string(const char** out) {
-	static aga_fixed_buf_t buf = { 0 };
+static enum asys_result aga_gl_result(asys_uint_t err) {
+	switch(err) {
+		default: return ASYS_RESULT_ERROR;
+		case GL_INVALID_ENUM: return ASYS_RESULT_BAD_TYPE;
+		case GL_INVALID_VALUE: return ASYS_RESULT_BAD_PARAM;
+		case GL_INVALID_OPERATION: return ASYS_RESULT_BAD_OP;
+		case GL_OUT_OF_MEMORY: return ASYS_RESULT_OOM;
+		case GL_STACK_UNDERFLOW: return ASYS_RESULT_STACK_UNDERFLOW;
+		case GL_STACK_OVERFLOW: return ASYS_RESULT_STACK_OVERFLOW;
+	}
+}
+
+enum asys_result aga_error_gl(const char* file, const char* function) {
+	enum asys_result err = ASYS_RESULT_OK;
+
+	unsigned res;
+
+	while((res = glGetError())) {
+		err = aga_gl_result(res);
+		if(file) { /* Null `file' acts to clear the GL error state. */
+			const char* str = (const char*) gluErrorString(res);
+			if(!str) str = "unknown error";
+			asys_log(file, "err: %s: %s", function, str);
+		}
+	}
+
+	return err;
+}
+
+enum asys_result aga_renderer_string(const char** out) {
+	static asys_fixed_buffer_t buffer = { 0 };
+
+	enum asys_result result;
 
 	const char* version;
 	const char* vendor;
 	const char* renderer;
 
-	if(!(version = (const char*) glGetString(GL_VERSION))) {
-		return aga_error_gl(__FILE__, "glGetString");
-	}
-	if(!(vendor = (const char*) glGetString(GL_VENDOR))) {
-		return aga_error_gl(__FILE__, "glGetString");
-	}
-	if(!(renderer = (const char*) glGetString(GL_RENDERER))) {
-		return aga_error_gl(__FILE__, "glGetString");
-	}
+	version = (const char*) glGetString(GL_VERSION);
+	if(!version) return aga_error_gl(__FILE__, "glGetString");
 
-	if(sprintf(buf, "%s %s %s", version, vendor, renderer) < 0) {
-		return aga_error_system(__FILE__, "sprintf");
-	}
+	vendor = (const char*) glGetString(GL_VENDOR);
+	if(!vendor) return aga_error_gl(__FILE__, "glGetString");
 
-	*out = buf;
+	renderer = (const char*) glGetString(GL_RENDERER);
+	if(!renderer) return aga_error_gl(__FILE__, "glGetString");
 
-	return AGA_RESULT_OK;
+	result = asys_string_format(
+			&buffer, 0, "%s %s %s", version, vendor, renderer);
+
+	if(result) return result;
+
+	*out = buffer;
+
+	return ASYS_RESULT_OK;
 }

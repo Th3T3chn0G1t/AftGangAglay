@@ -6,7 +6,7 @@
 #ifndef AGA_WIN32_H
 #define AGA_WIN32_H
 
-#include <aga/result.h>
+#include <asys/result.h>
 
 #ifdef _WIN32
 # ifdef AGA_WANT_WINDOWS_H

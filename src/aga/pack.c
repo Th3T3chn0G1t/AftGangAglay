@@ -5,11 +5,11 @@
 
 #include <aga/pack.h>
 #include <aga/io.h>
-#include <aga/error.h>
-#include <aga/log.h>
-#include <aga/std.h>
-#include <aga/utility.h>
 #include <aga/script.h>
+
+#include <asys/log.h>
+#include <asys/memory.h>
+#include <asys/string.h>
 
 /*
  * TODO: Allow inplace use of UNIX `compress'/`uncompress' utilities on pack
@@ -24,227 +24,204 @@
  * 		 System.
  */
 
+/* TODO: Hopefully we eventually won't need this anymore. */
 struct aga_resource_pack* aga_global_pack = 0;
 
-enum aga_result aga_resource_pack_lookup(
+enum asys_result aga_resource_pack_lookup(
 		struct aga_resource_pack* pack, const char* path,
 		struct aga_resource** out) {
 
-	aga_size_t i;
+	asys_size_t i;
 
-	if(!pack) return AGA_RESULT_BAD_PARAM;
-	if(!path) return AGA_RESULT_BAD_PARAM;
-	if(!out) return AGA_RESULT_BAD_PARAM;
+	if(!pack) return ASYS_RESULT_BAD_PARAM;
+	if(!path) return ASYS_RESULT_BAD_PARAM;
+	if(!out) return ASYS_RESULT_BAD_PARAM;
 
-	for(i = 0; i < pack->len; ++i) {
-		if(aga_streql(pack->db[i].conf->name, path)) {
-			*out = &pack->db[i];
-			return AGA_RESULT_OK;
+	for(i = 0; i < pack->count; ++i) {
+		struct aga_resource* resource = &pack->resources[i];
+
+		if(!resource->config) continue;
+
+		if(asys_string_equal(resource->config->name, path)) {
+			*out = &pack->resources[i];
+			return ASYS_RESULT_OK;
 		}
 	}
 
-	aga_log(__FILE__, "err: Path `%s' not found in resource pack", path);
+	asys_log(__FILE__, "err: Path `%s' not found in resource pack", path);
 
-	return AGA_RESULT_BAD_PARAM;
+	return ASYS_RESULT_BAD_PARAM;
 }
 
-enum aga_result aga_resource_pack_new(
+enum asys_result aga_resource_pack_new(
 		const char* path, struct aga_resource_pack* pack) {
 
-	enum aga_result result;
+	enum asys_result result;
 
-	aga_size_t i;
-	struct aga_resource_pack_header hdr;
-	aga_bool_t c = AGA_FALSE;
+	asys_size_t i;
+	struct aga_resource_pack_header header;
 
-	union aga_file_attribute attr;
-
-	if(!path) return AGA_RESULT_BAD_PARAM;
-	if(!pack) return AGA_RESULT_BAD_PARAM;
+	if(!path) return ASYS_RESULT_BAD_PARAM;
+	if(!pack) return ASYS_RESULT_BAD_PARAM;
 
 	aga_global_pack = pack;
 
-	pack->fp = 0;
-	pack->db = 0;
-	pack->len = 0;
-
-	aga_bzero(&pack->root, sizeof(struct aga_config_node));
+	asys_memory_zero(pack, sizeof(struct aga_resource_pack));
+	asys_memory_zero(&pack->root, sizeof(struct aga_config_node));
 
 #ifndef NDEBUG
 	pack->outstanding_refs = 0;
 #endif
 
-	aga_log(__FILE__, "Loading resource pack `%s'...", path);
+	asys_log(__FILE__, "Loading resource pack `%s'...", path);
 
-	if(!(pack->fp = fopen(path, "rb"))) {
-		return aga_error_system_path(__FILE__, "fopen", path);
-	}
+	if((result = asys_stream_new(&pack->stream, path))) return result;
 
-	result = aga_file_attribute(pack->fp, AGA_FILE_LENGTH, &attr);
-	if(result) goto cleanup;
-	pack->size = attr.length;
+	result = asys_stream_read(
+			&pack->stream, 0, &header,
+			sizeof(struct aga_resource_pack_header));
 
-	result = aga_file_read(&hdr, sizeof(hdr), pack->fp);
 	if(result) goto cleanup;
 
-	if(hdr.magic != AGA_PACK_MAGIC) {
-		result = AGA_RESULT_BAD_PARAM;
+	if(header.magic != AGA_PACK_MAGIC) {
+		asys_log(
+				__FILE__,
+				"Invalid resource pack magic. Expected `%x', got `%x'",
+				AGA_PACK_MAGIC, header.magic);
+
+		result = ASYS_RESULT_BAD_PARAM;
 		goto cleanup;
 	}
 
-	aga_config_debug_file = path;
-
-	result = aga_config_new(pack->fp, hdr.size, &pack->root);
+	result = aga_config_new(&pack->stream, header.size, &pack->root);
 	if(result) goto cleanup;
 
-	c = AGA_TRUE;
+	pack->count = pack->root.children->len;
+	pack->data_offset = header.size + sizeof(header);
 
-	pack->len = pack->root.children->len;
-	pack->data_offset = hdr.size + sizeof(hdr);
+	pack->resources = asys_memory_allocate_zero(
+			pack->count, sizeof(struct aga_resource));
 
-	pack->db = aga_calloc(pack->len, sizeof(struct aga_resource));
-	if(!pack->db) {
-		result = AGA_RESULT_OOM;
+	if(!pack->resources) {
+		result = ASYS_RESULT_OOM;
 		goto cleanup;
 	}
 
-	for(i = 0; i < pack->len; ++i) {
-		static const char* off = "Offset";
-		static const char* sz = "Size";
+	for(i = 0; i < pack->count; ++i) {
+		static const char* offset_name = "Offset";
+		static const char* size_name = "Size";
 
-		struct aga_resource* res = &pack->db[i];
+		struct aga_resource* resource = &pack->resources[i];
 		struct aga_config_node* node = &pack->root.children->children[i];
 
-		aga_config_int_t offset, size;
-
-		res->conf = node;
-		res->pack = pack;
+		aga_config_int_t v;
+		asys_size_t offset, size;
 
 		result = aga_config_lookup(
-				node, &off, 1, &offset, AGA_INTEGER, AGA_FALSE);
-		if(result) {
-			aga_error_check_soft(__FILE__, "aga_config_lookup", result);
-			aga_log(
-					__FILE__, "Resource #%zu appears to be missing an offset "
-							  "entry", i);
-			continue;
-		}
-		res->offset = (aga_size_t) offset;
+				node, &offset_name, 1, &v, AGA_INTEGER, ASYS_TRUE);
 
-		if(res->offset >= pack->size) {
-			aga_log(
-					__FILE__, "Resource #%zu appears to be beyond resource "
-							  "pack bounds (`%zu >= %zu')", i, res->offset,
-					pack->size);
-			result = AGA_RESULT_BAD_PARAM;
-			goto cleanup;
-		}
+		if(result) continue;
+		offset = v;
 
 		result = aga_config_lookup(
-				node, &sz, 1, &size, AGA_INTEGER, AGA_FALSE);
-		if(result) {
-			aga_error_check_soft(__FILE__, "aga_config_lookup", result);
-			aga_log(
-					__FILE__, "Resource #%zu appears to be missing a size "
-							  "entry", i);
-			continue;
-		}
-		res->size = (aga_size_t) size;
+				node, &size_name, 1, &v, AGA_INTEGER, ASYS_TRUE);
 
-		if(res->offset + res->size >= pack->size) {
-			aga_log(
-					__FILE__, "Resource #%zu appears to be beyond resource "
-							  "pack bounds (`%zu + %zu >= %zu')", i,
-					res->offset, res->size, pack->size);
-			result = AGA_RESULT_BAD_PARAM;
-			goto cleanup;
-		}
+		if(result) continue;
+		size = v;
+
+		/* Only make a valid resource entry once all checks have passed. */
+		resource->config = node;
+		resource->pack = pack;
+		resource->offset = (asys_size_t) offset;
+		resource->size = (asys_size_t) size;
 	}
 
-	aga_log(__FILE__, "Loaded `%zu' resource entries", pack->len);
+	asys_log(__FILE__, "Processed `%zu' resource entries", pack->count);
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 
 	cleanup: {
-		aga_free(pack->db);
+		asys_memory_free(pack->resources);
 
-		if(pack->fp && fclose(pack->fp) == EOF) {
-			(void) aga_error_system(__FILE__, "fclose");
-		}
-		pack->fp = 0;
+		asys_log_result(
+				__FILE__, "asys_stream_delete",
+				asys_stream_delete(&pack->stream));
 
-		if(c) {
-			aga_error_check_soft(
-					__FILE__, "aga_config_delete",
-					aga_config_delete(&pack->root));
-		}
+		asys_log_result(
+				__FILE__, "aga_config_delete",
+				aga_config_delete(&pack->root));
 
 		return result;
 	}
 }
 
-enum aga_result aga_resource_pack_delete(struct aga_resource_pack* pack) {
-	enum aga_result result;
+enum asys_result aga_resource_pack_delete(struct aga_resource_pack* pack) {
+	enum asys_result result;
 
-	if(!pack) return AGA_RESULT_BAD_PARAM;
+	if(!pack) return ASYS_RESULT_BAD_PARAM;
 
 	if((result = aga_resource_pack_sweep(pack))) return result;
 
 #ifndef NDEBUG
 	if(pack->outstanding_refs) {
-		aga_log(
+		asys_log(
 				__FILE__, "warn: `%zu' outstanding refs held in freed respack",
 				pack->outstanding_refs);
 	}
 #endif
 
-	aga_free(pack->db);
-	if(pack->fp && fclose(pack->fp) == EOF) {
-		return aga_error_system(__FILE__, "fclose");
+	asys_memory_free(pack->resources);
+
+	result = asys_stream_delete(&pack->stream);
+	if(result) {
+		asys_log_result(
+				__FILE__, "aga_config_delete", aga_config_delete(&pack->root));
+
+		return result;
 	}
 
 	return aga_config_delete(&pack->root);
 }
 
-enum aga_result aga_resource_pack_sweep(struct aga_resource_pack* pack) {
-	aga_size_t i;
+enum asys_result aga_resource_pack_sweep(struct aga_resource_pack* pack) {
+	asys_size_t i;
 
-	if(!pack) return AGA_RESULT_BAD_PARAM;
+	if(!pack) return ASYS_RESULT_BAD_PARAM;
 
-	for(i = 0; i < pack->len; ++i) {
-		struct aga_resource* res = &pack->db[i];
+	for(i = 0; i < pack->count; ++i) {
+		struct aga_resource* resource = &pack->resources[i];
 
-		if(res->refcount || !res->data) continue;
+		if(resource->refcount || !resource->data) continue;
 
 #ifndef NDEBUG
 		pack->outstanding_refs--;
 #endif
 
-		aga_free(res->data);
-		res->data = 0;
+		asys_memory_free(resource->data);
+		resource->data = 0;
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_resource_new(
+enum asys_result aga_resource_new(
 		struct aga_resource_pack* pack, const char* path,
-		struct aga_resource** res) {
+		struct aga_resource** resource) {
 
-	enum aga_result result;
+	enum asys_result result;
 
-	if(!path) return AGA_RESULT_BAD_PARAM;
-	if(!pack) return AGA_RESULT_BAD_PARAM;
-	if(!res) return AGA_RESULT_BAD_PARAM;
+	if(!path) return ASYS_RESULT_BAD_PARAM;
+	if(!pack) return ASYS_RESULT_BAD_PARAM;
+	if(!resource) return ASYS_RESULT_BAD_PARAM;
 
-	result = aga_resource_pack_lookup(pack, path, res);
+	result = aga_resource_pack_lookup(pack, path, resource);
 	if(result) {
-		aga_log(__FILE__, "err: Failed to find resource `%s'", path);
+		asys_log(__FILE__, "err: Failed to find resource `%s'", path);
 		return result;
 	}
 
-	if(!(*res)->data) {
-		result = aga_resource_seek(*res, 0);
+	if(!(*resource)->data) {
+		result = aga_resource_seek(*resource, 0);
 		if(result) return result;
 
 #ifndef NDEBUG
@@ -252,67 +229,72 @@ enum aga_result aga_resource_new(
 #endif
 
 		/* TODO: Use mapping for large reads. */
-		if(!((*res)->data = aga_malloc((*res)->size))) return AGA_RESULT_OOM;
+		(*resource)->data = asys_memory_allocate((*resource)->size);
+		if(!(*resource)->data) return ASYS_RESULT_OOM;
 
-		result = aga_file_read((*res)->data, (*res)->size, pack->fp);
+		result = asys_stream_read(
+				&pack->stream, 0, (*resource)->data, (*resource)->size);
+
 		if(result) return result;
 	}
 
-	++(*res)->refcount;
+	++(*resource)->refcount;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_resource_stream(
-		struct aga_resource_pack* pack, const char* path, void** fp,
-		aga_size_t* size) {
+enum asys_result aga_resource_stream(
+		struct aga_resource_pack* pack, const char* path,
+		struct asys_stream** stream, asys_size_t* size) {
 
-	enum aga_result result;
-	struct aga_resource* res;
+	enum asys_result result;
+	struct aga_resource* resource;
 
-	if(!pack) return AGA_RESULT_BAD_PARAM;
-	if(!path) return AGA_RESULT_BAD_PARAM;
+	if(!pack) return ASYS_RESULT_BAD_PARAM;
+	if(!path) return ASYS_RESULT_BAD_PARAM;
 
-	result = aga_resource_pack_lookup(pack, path, &res);
+	result = aga_resource_pack_lookup(pack, path, &resource);
 	if(result) return result;
 
-	result = aga_resource_seek(res, 0);
+	result = aga_resource_seek(resource, 0);
 	if(result) return result;
 
-	*fp = pack->fp;
-	*size = res->size;
+	*stream = &pack->stream;
+	*size = resource->size;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_resource_seek(struct aga_resource* res, void** fp) {
+enum asys_result aga_resource_seek(
+		struct aga_resource* resource, struct asys_stream** stream) {
+
 	int result;
-	aga_size_t offset;
+	asys_offset_t offset;
 
-	if(!res) return AGA_RESULT_BAD_PARAM;
+	if(!resource) return ASYS_RESULT_BAD_PARAM;
 
-	offset = res->pack->data_offset + res->offset;
+	offset = (asys_offset_t) (resource->pack->data_offset + resource->offset);
 
-	result = fseek(res->pack->fp, (long) offset, SEEK_SET);
-	if(result) return aga_error_system(__FILE__, "fseek");
+	result = asys_stream_seek(&resource->pack->stream, ASYS_SEEK_SET, offset);
+	if(result) return result;
 
-	if(fp) *fp = res->pack->fp;
+	if(stream) *stream = &resource->pack->stream;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_resource_aquire(struct aga_resource* res) {
-	if(!res) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_resource_aquire(struct aga_resource* res) {
+	if(!res) return ASYS_RESULT_BAD_PARAM;
 
 	++res->refcount;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_resource_release(struct aga_resource* res) {
-	if(!res) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_resource_release(struct aga_resource* res) {
+	if(!res) return ASYS_RESULT_BAD_PARAM;
 
 	if(res->refcount) --res->refcount;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }

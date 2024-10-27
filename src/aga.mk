@@ -8,26 +8,26 @@ AGAN = src$(SEP)agan$(SEP)
 AGANH = include$(SEP)agan$(SEP)
 
 # aga
-AGA1 = $(AGA)config.c $(AGA)draw.c $(AGA)midi.c $(AGA)utility.c $(AGA)pack.c
-AGA2 = $(AGA)log.c $(AGA)python.c $(AGA)script.c $(AGA)startup.c
-AGA3 = $(AGA)sound.c $(AGA)win32.c $(AGA)aga.c $(AGA)window.c $(AGA)error.c
-AGA4 = $(AGA)render.c $(AGA)result.c $(AGA)io.c $(AGA)build.c $(AGA)graph.c
+AGA1 = $(AGA)config.c $(AGA)draw.c $(AGA)midi.c $(AGA)pack.c
+AGA2 = $(AGA)python.c $(AGA)script.c $(AGA)startup.c
+AGA3 = $(AGA)sound.c $(AGA)win32.c $(AGA)aga.c $(AGA)window.c
+AGA4 = $(AGA)render.c $(AGA)io.c $(AGA)build.c $(AGA)graph.c
 # agan
-AGA5 = $(AGAN)draw.c $(AGAN)utility.c $(AGAN)agan.c $(AGAN)object.c
+AGA5 = $(AGAN)draw.c $(AGAN)agan.c $(AGAN)object.c $(AGAN)utility.c
 AGA6 = $(AGAN)math.c $(AGAN)editor.c $(AGAN)io.c
 
 # aga
-AGAH1 = $(AGAH)config.h $(AGAH)environment.h $(AGAH)error.h $(AGAH)utility.h
-AGAH2 = $(AGAH)gl.h $(AGAH)io.h $(AGAH)log.h $(AGAH)result.h $(AGAH)script.h
-AGAH3 = $(AGAH)python.h $(AGAH)sound.h $(AGAH)startup.h $(AGAH)render.h
-AGAH4 = $(AGAH)std.h $(AGAH)win32.h $(AGAH)window.h $(AGAH)pack.h $(AGAH)draw.h
-AGAH5 = $(AGAH)graph.h
+AGAH1 = $(AGAH)config.h $(AGAH)gl.h $(AGAH)io.h $(AGAH)script.h
+AGAH2 = $(AGAH)python.h $(AGAH)sound.h $(AGAH)startup.h $(AGAH)render.h
+AGAH3 = $(AGAH)win32.h $(AGAH)window.h $(AGAH)pack.h $(AGAH)draw.h
+AGAH4 = $(AGAH)graph.h
 # agan
-AGAH6 = $(AGANH)agan.h $(AGANH)object.h $(AGANH)draw.h $(AGAH)render.h
-AGAH7 = $(AGANH)utility.h $(AGANH)io.h
+AGAH5 = $(AGANH)agan.h $(AGANH)object.h $(AGANH)draw.h $(AGAH)render.h
+AGAH6 = $(AGANH)utility.h $(AGANH)io.h
+# TODO: `sys' headers.
 
 AGA_SRC = $(AGA1) $(AGA2) $(AGA3) $(AGA4) $(AGA5) $(AGA6)
-AGA_HDR = $(AGAH1) $(AGAH2) $(AGAH3) $(AGAH4) $(AGAH5) $(AGAH6) $(AGAH7)
+AGA_HDR = $(AGAH1) $(AGAH2) $(AGAH3) $(AGAH4) $(AGAH5) $(AGAH6)
 AGA_OBJ = $(subst .c,$(OBJ),$(AGA_SRC))
 
 AGA_OUT = $(AGA)aga$(EXE)

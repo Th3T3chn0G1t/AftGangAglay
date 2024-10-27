@@ -5,7 +5,7 @@
 
 #include <agan/math.h>
 
-#include <aga/log.h>
+#include <asys/log.h>
 #include <aga/diagnostic.h>
 
 #include <apro.h>
@@ -15,11 +15,11 @@
  * 		 Procs. in `builtinmodule' or `mathmodule'.
  */
 
-enum aga_result agan_math_register(struct py_env* env) {
+enum asys_result agan_math_register(struct py_env* env) {
 	static const double pi = 3.14159265358979323846;
 	static const double e = 2.71828182845904523536;
 
-	enum aga_result result;
+	enum asys_result result;
 
 	(void) env;
 
@@ -29,7 +29,7 @@ enum aga_result agan_math_register(struct py_env* env) {
 
 	if((result = aga_insertfloat("E", e))) return result;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 /* Python lacks native bitwise ops @-@ */

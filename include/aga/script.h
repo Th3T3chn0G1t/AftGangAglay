@@ -6,8 +6,8 @@
 #ifndef AGA_SCRIPT_H
 #define AGA_SCRIPT_H
 
-#include <aga/environment.h>
-#include <aga/result.h>
+#include <asys/base.h>
+#include <asys/result.h>
 
 #include <apro.h>
 
@@ -28,7 +28,7 @@ struct aga_script_userdata {
 	struct aga_pointer* pointer;
 	struct aga_settings* opts;
 	struct aga_sound_device* sound_device;
-	aga_bool_t* die;
+	asys_bool_t* die;
 	struct aga_window_device* window_device;
 	struct aga_window* window;
 	struct aga_resource_pack* resource_pack;
@@ -53,14 +53,14 @@ struct aga_script_engine {
 	void* agan;
 };
 
-enum aga_result aga_script_engine_new(
+enum asys_result aga_script_engine_new(
 		struct aga_script_engine*, const char*, struct aga_resource_pack*,
 		const char*, void*);
 
-enum aga_result aga_script_engine_delete(struct aga_script_engine*);
+enum asys_result aga_script_engine_delete(struct aga_script_engine*);
 
 /* TODO: Generalised object storage/lookup abstraction. */
-enum aga_result aga_script_engine_lookup(
+enum asys_result aga_script_engine_lookup(
 		struct aga_script_engine*, struct aga_script_class*, const char*);
 
 void aga_script_engine_trace(void);
@@ -68,12 +68,12 @@ void aga_script_engine_trace(void);
 void* aga_script_pointer_new(void*);
 void* aga_script_pointer_get(void*);
 
-enum aga_result aga_script_instance_new(
+enum asys_result aga_script_instance_new(
 		struct aga_script_class*, struct aga_script_instance*);
 
-enum aga_result aga_script_instance_delete(struct aga_script_instance*);
+enum asys_result aga_script_instance_delete(struct aga_script_instance*);
 
-enum aga_result aga_script_instance_call(
+enum asys_result aga_script_instance_call(
 		struct aga_script_engine*, struct aga_script_instance*, const char*);
 
 #endif

@@ -6,11 +6,11 @@
 #ifndef AGA_PYTHON_H
 #define AGA_PYTHON_H
 
-#include <aga/environment.h>
+#include <asys/base.h>
 
 #include <python/state.h>
 #include <python/errors.h>
-#include <python/result.h>
+#include <asys/result.h>
 #include <python/ceval.h>
 #include <python/traceback.h>
 #include <python/compile.h>

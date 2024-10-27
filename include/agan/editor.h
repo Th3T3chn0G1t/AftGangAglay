@@ -8,6 +8,6 @@
 
 #include <agan/agan.h>
 
-enum aga_result agan_ed_register(struct py_env*);
+enum asys_result agan_ed_register(struct py_env*);
 
 #endif

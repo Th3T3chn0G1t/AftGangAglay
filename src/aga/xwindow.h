@@ -7,14 +7,11 @@
 #define AGA_X_WINDOW_H
 
 #include <aga/gl.h>
-#include <aga/log.h>
-#include <aga/error.h>
-#include <aga/utility.h>
 #include <aga/draw.h>
 
-/* TODO: Move shell utils elsewhere and remove this. */
-#define AGA_WANT_UNIX
-#include <aga/std.h>
+#include <asys/log.h>
+#include <asys/memory.h>
+
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -31,7 +28,7 @@
 static const char* agax_chk_last = "xlib";
 
 /* TODO: Check against return value for `0'. */
-#define AGAX_CHK(proc, param) (agax_chk_last = #proc, proc param)
+#define AGAX_CHK(function, parameter) (agax_chk_last = #function, function parameter)
 
 static const int single_buffer_fb[] = {
 		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT, GLX_RENDER_TYPE, GLX_RGBA_BIT,
@@ -55,69 +52,71 @@ static const int double_buffer_fb[] = {
 static int aga_window_device_error_handler(
 		Display* display, XErrorEvent* err) {
 
-	aga_fixed_buf_t buf = { 0 };
+	asys_fixed_buffer_t buffer = { 0 };
 
-	XGetErrorText(display, err->error_code, buf, sizeof(buf));
-	aga_log(__FILE__, "err: %s: %s", agax_chk_last, buf);
+	XGetErrorText(display, err->error_code, buffer, sizeof(buffer));
+	asys_log(__FILE__, "err: %s: %s", agax_chk_last, buffer);
 
 	return 0;
 }
 
-enum aga_result aga_window_device_new(
+enum asys_result aga_window_device_new(
 		struct aga_window_device* env, const char* display) {
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
 
 	AGAX_CHK(XSetErrorHandler, (aga_window_device_error_handler));
 
 	env->capture = 0;
 	env->display = AGAX_CHK(XOpenDisplay, (display));
-	if(!env->display) return AGA_RESULT_ERROR;
+	if(!env->display) return ASYS_RESULT_ERROR;
 
 	env->screen = DefaultScreen(env->display);
 
 	env->wm_protocols = AGAX_CHK(XInternAtom,
 							 	(env->display, "WM_PROTOCOLS", True));
 
-	if(env->wm_protocols == None) return AGA_RESULT_BAD_PARAM;
+	if(env->wm_protocols == None) return ASYS_RESULT_BAD_PARAM;
 
 	env->wm_delete = AGAX_CHK(XInternAtom,
 							  (env->display, "WM_DELETE_WINDOW", True));
 
-	if(env->wm_delete == None) return AGA_RESULT_BAD_PARAM;
+	if(env->wm_delete == None) return ASYS_RESULT_BAD_PARAM;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_device_delete(struct aga_window_device* env) {
-	if(!env) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_window_device_delete(struct aga_window_device* env) {
+	if(!env) return ASYS_RESULT_BAD_PARAM;
 
 	AGAX_CHK(XCloseDisplay, (env->display));
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_keymap_new(
+enum asys_result aga_keymap_new(
 		struct aga_keymap* keymap, struct aga_window_device* env) {
 
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
-	if(!env) return AGA_RESULT_BAD_PARAM;
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
 
-	keymap->states = aga_calloc(AGAX_KEY_MAX, sizeof(aga_bool_t));
-	if(!keymap->states) return AGA_RESULT_OOM;
+	keymap->states = asys_memory_allocate_zero(
+			AGAX_KEY_MAX, sizeof(asys_bool_t));
 
-	return AGA_RESULT_OK;
+	if(!keymap->states) return ASYS_RESULT_OOM;
+
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_keymap_delete(struct aga_keymap* keymap) {
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_keymap_delete(struct aga_keymap* keymap) {
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
 
-	aga_free(keymap->states);
+	asys_memory_free(keymap->states);
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-static enum aga_result aga_window_set_glx(
+static enum asys_result aga_window_set_glx(
 		struct aga_window_device* env, struct aga_window* win) {
 
 	static const char* const names[] = {
@@ -134,46 +133,46 @@ static enum aga_result aga_window_set_glx(
 
 	int res;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
-	win->double_buffered = AGA_TRUE;
+	win->double_buffered = ASYS_TRUE;
 	fb = AGAX_CHK(glXChooseFBConfig,
 				  (env->display, env->screen, double_buffer_fb, &n_fb));
 	if(!fb) {
-		win->double_buffered = AGA_FALSE;
+		win->double_buffered = ASYS_FALSE;
 		fb = AGAX_CHK(glXChooseFBConfig,
 					  (env->display, env->screen, single_buffer_fb, &n_fb));
-		if(!fb) return AGA_RESULT_ERROR;
+		if(!fb) return ASYS_RESULT_ERROR;
 	}
 
 	/* TODO: `glXGetVisualFromFBConfig' is too new for us. */
 	vi = AGAX_CHK(glXGetVisualFromFBConfig, (env->display, *fb));
-	if(!vi) return AGA_RESULT_ERROR;
+	if(!vi) return ASYS_RESULT_ERROR;
 
 	win->glx = AGAX_CHK(glXCreateContext, (env->display, vi, 0, True));
-	if(!win->glx) return AGA_RESULT_ERROR;
+	if(!win->glx) return ASYS_RESULT_ERROR;
 
 	XFree(vi);
 
 	res = AGAX_CHK(glXMakeCurrent,(env->display, win->window, win->glx));
-	if(!res) return AGA_RESULT_ERROR;
+	if(!res) return ASYS_RESULT_ERROR;
 
-	while(AGA_TRUE) {
+	while(ASYS_TRUE) {
 		char** fontname;
-		if(current >= AGA_LEN(names)) {
-			aga_log(__FILE__, "err: no fonts available");
-			return AGA_RESULT_BAD_OP;
+		if(current >= ASYS_LENGTH(names)) {
+			asys_log(__FILE__, "err: no fonts available");
+			return ASYS_RESULT_BAD_OP;
 		}
 
-		aga_log(__FILE__, "Trying font pattern `%s'...", names[current]);
+		asys_log(__FILE__, "Trying font pattern `%s'...", names[current]);
 		fontname = AGAX_CHK(XListFonts,
 							(env->display, names[current], 1, &font_count));
 
 		if(font_count) {
-			if(!fontname) return AGA_RESULT_ERROR;
+			if(!fontname) return ASYS_RESULT_ERROR;
 
-			aga_log(__FILE__, "Using x11 font `%s'", *fontname);
+			asys_log(__FILE__, "Using x11 font `%s'", *fontname);
 
 			AGAX_CHK(XFreeFontNames, (fontname));
 
@@ -185,7 +184,7 @@ static enum aga_result aga_window_set_glx(
 	}
 
 	info = AGAX_CHK(XLoadQueryFont, (env->display, names[current]));
-	if(!info) return AGA_RESULT_ERROR;
+	if(!info) return ASYS_RESULT_ERROR;
 
 	font = info->fid;
 
@@ -198,7 +197,7 @@ static enum aga_result aga_window_set_glx(
 
 	AGAX_CHK(XUnloadFont, (env->display, font));
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 /*
@@ -212,25 +211,25 @@ XColor black_col = { 0 };
 char empty[8] = { 0 };
 bitmap = XCreatePixmapFromBitmapData(
 	env->display, win->window, empty, 1, 1, white, black, 1);
-AGA_VERIFY(bitmap != None, AGA_RESULT_OOM);
+AGA_VERIFY(bitmap != None, ASYS_RESULT_OOM);
 XFreePixmap(env->display, bitmap);
  */
 
 static const long aga_global_window_mask = KeyPressMask | KeyReleaseMask |
 					 PointerMotionMask | ButtonPressMask | ButtonReleaseMask;
 
-enum aga_result aga_window_new(
-		aga_size_t width, aga_size_t height, const char* title,
+enum asys_result aga_window_new(
+		asys_size_t width, asys_size_t height, const char* title,
 		struct aga_window_device* env, struct aga_window* win,
-		aga_bool_t do_glx, int argc, char** argv) {
+		asys_bool_t do_glx, int argc, char** argv) {
 
-	enum aga_result result;
+	enum asys_result result;
 
 	aga_xid_t black, white;
 	aga_xid_t root;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	black = BlackPixel(env->display, env->screen);
 	white = WhitePixel(env->display, env->screen);
@@ -242,7 +241,7 @@ enum aga_result aga_window_new(
 	win->window = AGAX_CHK(XCreateSimpleWindow,
 						   (env->display, root, 0, 0, width, height, 8,
 						   white, black));
-	if(win->window == None) return AGA_RESULT_ERROR;
+	if(win->window == None) return ASYS_RESULT_ERROR;
 
 	AGAX_CHK(XSetStandardProperties,
 			 (env->display, win->window, title, "", None, argv, argc, 0));
@@ -263,24 +262,24 @@ enum aga_result aga_window_new(
 			count = 0;
 		}
 
-		new_protocols = aga_malloc((count + 1) * sizeof(Atom));
+		new_protocols = asys_memory_allocate((count + 1) * sizeof(Atom));
 		if(!new_protocols) {
 			if(protocols) XFree(protocols);
-			return AGA_RESULT_OOM;
+			return ASYS_RESULT_OOM;
 		}
 
-		aga_memcpy(new_protocols, protocols, count * sizeof(Atom));
+		asys_memory_copy(new_protocols, protocols, count * sizeof(Atom));
 		new_protocols[count] = env->wm_delete;
 		if(protocols) XFree(protocols);
 
 		res = AGAX_CHK(XSetWMProtocols,
 					   (env->display, win->window, new_protocols, count + 1));
 		if(!res) {
-			aga_free(new_protocols);
-			return AGA_RESULT_ERROR;
+			asys_memory_free(new_protocols);
+			return ASYS_RESULT_ERROR;
 		}
 
-		aga_free(new_protocols);
+		asys_memory_free(new_protocols);
 	}
 	AGAX_CHK(XSetInputFocus,
 			 (env->display, win->window, RevertToNone, CurrentTime));
@@ -288,24 +287,24 @@ enum aga_result aga_window_new(
 	AGAX_CHK(XMapRaised, (env->display, win->window));
 
 	win->blank_cursor = AGAX_CHK(XCreateFontCursor, (env->display, XC_tcross));
-	if(win->blank_cursor == None) return AGA_RESULT_ERROR;
+	if(win->blank_cursor == None) return ASYS_RESULT_ERROR;
 
 	win->arrow_cursor = AGAX_CHK(XCreateFontCursor, (env->display, XC_arrow));
-	if(win->arrow_cursor == None) return AGA_RESULT_ERROR;
+	if(win->arrow_cursor == None) return ASYS_RESULT_ERROR;
 
 	if(do_glx) {
 		result = aga_window_set_glx(env, win);
 		if(result) return result;
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_delete(
+enum asys_result aga_window_delete(
 		struct aga_window_device* env, struct aga_window* win) {
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(win->glx) AGAX_CHK(glXDestroyContext, (env->display, win->glx));
 
@@ -313,84 +312,84 @@ enum aga_result aga_window_delete(
 	AGAX_CHK(XFreeCursor, (env->display, win->arrow_cursor));
 	AGAX_CHK(XDestroyWindow, (env->display, win->window));
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_select(
+enum asys_result aga_window_select(
 		struct aga_window_device* env, struct aga_window* win) {
 
 	int res;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	res = AGAX_CHK(glXMakeCurrent,(env->display, win->window, win->glx));
-	if(!res) return AGA_RESULT_ERROR;
+	if(!res) return ASYS_RESULT_ERROR;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_keymap_lookup(
-		struct aga_keymap* keymap, unsigned sym, aga_bool_t* state) {
+enum asys_result aga_keymap_lookup(
+		struct aga_keymap* keymap, unsigned sym, asys_bool_t* state) {
 
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
-	if(!state) return AGA_RESULT_BAD_PARAM;
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
+	if(!state) return ASYS_RESULT_BAD_PARAM;
 
-	if(!keymap->states) return AGA_RESULT_ERROR;
+	if(!keymap->states) return ASYS_RESULT_ERROR;
 
-	if(sym > AGAX_KEY_MAX) return AGA_RESULT_BAD_OP;
+	if(sym > AGAX_KEY_MAX) return ASYS_RESULT_BAD_OP;
 
 	*state = keymap->states[sym];
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_set_cursor(
+enum asys_result aga_window_set_cursor(
 		struct aga_window_device* env, struct aga_window* win,
-		aga_bool_t visible, aga_bool_t captured) {
+		asys_bool_t visible, asys_bool_t captured) {
 
-	aga_xid_t cur;
+	aga_xid_t current;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	env->capture = captured ? win : 0;
 
-	cur = visible ? win->arrow_cursor : win->blank_cursor;
-	AGAX_CHK(XDefineCursor, (env->display, win->window, cur));
+	current = visible ? win->arrow_cursor : win->blank_cursor;
+	AGAX_CHK(XDefineCursor, (env->display, win->window, current));
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_swap(
+enum asys_result aga_window_swap(
 		struct aga_window_device* env, struct aga_window* win) {
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(win->double_buffered) {
 		AGAX_CHK(glXSwapBuffers, (env->display, win->window));
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_device_poll(
+enum asys_result aga_window_device_poll(
 		struct aga_window_device* env, struct aga_keymap* keymap,
 		struct aga_window* window, struct aga_pointer* pointer,
-		aga_bool_t* die, struct aga_buttons* buttons) {
+		asys_bool_t* die, struct aga_buttons* buttons) {
 
 	XEvent event;
 	unsigned i;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
-	if(!window) return AGA_RESULT_BAD_PARAM;
-	if(!pointer) return AGA_RESULT_BAD_PARAM;
-	if(!die) return AGA_RESULT_BAD_PARAM;
-	if(!buttons) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
+	if(!window) return ASYS_RESULT_BAD_PARAM;
+	if(!pointer) return ASYS_RESULT_BAD_PARAM;
+	if(!die) return ASYS_RESULT_BAD_PARAM;
+	if(!buttons) return ASYS_RESULT_BAD_PARAM;
 
-	for(i = 0; i < AGA_LEN(buttons->states); ++i) {
+	for(i = 0; i < ASYS_LENGTH(buttons->states); ++i) {
 		if(buttons->states[i] == AGA_BUTTON_CLICK) {
 			buttons->states[i] = AGA_BUTTON_DOWN;
 		}
@@ -403,7 +402,7 @@ enum aga_result aga_window_device_poll(
 	 * 		 Queue split by window -- which means `poll' invocations can be
 	 * 		 Restructured elsewhere.
 	 */
-	while(AGA_TRUE) {
+	while(ASYS_TRUE) {
 		int ret = XCheckTypedWindowEvent(
 				env->display, window->window, ClientMessage, &event);
 
@@ -412,13 +411,13 @@ enum aga_result aga_window_device_poll(
 		if(event.xclient.message_type == env->wm_protocols) {
 			aga_xid_t atom = event.xclient.data.l[0];
 			if(atom == env->wm_delete) {
-				*die = AGA_TRUE;
+				*die = ASYS_TRUE;
 			}
 		}
 	}
 
-	while(AGA_TRUE) {
-		aga_bool_t press = AGA_FALSE;
+	while(ASYS_TRUE) {
+		asys_bool_t press = ASYS_FALSE;
 
 		int ret = XCheckWindowEvent(
 				env->display, window->window, aga_global_window_mask, &event);
@@ -433,8 +432,8 @@ enum aga_result aga_window_device_poll(
 			 * 		 `Button3 -> MMB' which (apparently) isn't always true.
 			 */
 			case ButtonPress: {
-				press = AGA_TRUE;
-				AGA_FALLTHROUGH;
+				press = ASYS_TRUE;
+				ASYS_FALLTHROUGH;
 			}
 			/* FALLTHROUGH */
 			case ButtonRelease: {
@@ -455,8 +454,8 @@ enum aga_result aga_window_device_poll(
 # pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 			case KeyPress: {
-				press = AGA_TRUE;
-				AGA_FALLTHROUGH;
+				press = ASYS_TRUE;
+				ASYS_FALLTHROUGH;
 			}
 			/* FALLTHROUGH */
 			case KeyRelease: {
@@ -492,7 +491,7 @@ enum aga_result aga_window_device_poll(
 				/* Handle captured pointer. */
 				{
 					aga_xid_t win;
-					aga_bool_t centred;
+					asys_bool_t centred;
 					int x = (int) capture->width / 2;
 					int y = (int) capture->height / 2;
 
@@ -514,7 +513,7 @@ enum aga_result aga_window_device_poll(
 				if(event.xclient.message_type == env->wm_protocols) {
 					aga_xid_t atom = event.xclient.data.l[0];
 					if(atom == env->wm_delete) {
-						*die = AGA_TRUE;
+						*die = ASYS_TRUE;
 					}
 				}
 
@@ -523,63 +522,31 @@ enum aga_result aga_window_device_poll(
 		}
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-/* TODO: Use `xdg' for dialog/shell_open when available. */
+enum asys_result aga_dialog(
+		const char* message, const char* title, asys_bool_t* response,
+		asys_bool_t is_error) {
 
-enum aga_result aga_dialog(
-		const char* message, const char* title, aga_bool_t* response,
-		aga_bool_t is_error) {
+	(void) message;
+	(void) title;
+	(void) response;
+	(void) is_error;
 
-	if(!message) return AGA_RESULT_BAD_PARAM;
-	if(!title) return AGA_RESULT_BAD_PARAM;
-	if(!response) return AGA_RESULT_BAD_PARAM;
-
-	if(isatty(STDIN_FILENO)) {
-		int c = 'N';
-		const char* err = is_error ? "err: " : "";
-
-		aga_log(__FILE__, "%s%s: %s (Y/N)", err, title, message);
-		if((c = getchar()) == EOF) {
-			if(ferror(stdin)) return aga_error_system(__FILE__, "getchar");
-		}
-		*response = (toupper(c) == 'Y');
-	}
-	else { *response = AGA_FALSE; }
-
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_NOT_IMPLEMENTED;
 }
 
-enum aga_result aga_dialog_file(char** result) {
-	/*
-	 * TODO: `_POSIX_C_SOURCE=2` doesn't seem to define `PATH_MAX` even though
-	 * 		 `_POSIX_C_SOURCE=1` does.
-	 */
-	static const aga_size_t path_max = 4096;
+enum asys_result aga_dialog_file(char** result) {
+	(void) result;
 
-	if(!result) return AGA_RESULT_BAD_PARAM;
-
-	if(!(*result = aga_calloc(path_max, sizeof(char)))) return AGA_RESULT_OOM;
-
-	if(!fgets(*result, (int) path_max, stdin)) {
-		if(feof(stdin)) {
-			*result[0] = 0;
-			return AGA_RESULT_OK;
-		}
-
-		return aga_error_system(__FILE__, "fgets");
-	}
-
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_NOT_IMPLEMENTED;
 }
 
-enum aga_result aga_shell_open(const char* uri) {
-	if(!uri) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_shell_open(const char* uri) {
+	(void) uri;
 
-	aga_log(__FILE__, "%s", uri);
-
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_NOT_IMPLEMENTED;
 }
 
 #endif

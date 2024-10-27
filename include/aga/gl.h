@@ -6,7 +6,7 @@
 #ifndef AGA_GL_H
 #define AGA_GL_H
 
-#include <aga/result.h>
+#include <asys/result.h>
 
 #ifdef _WIN32
 # ifdef _MSC_VER

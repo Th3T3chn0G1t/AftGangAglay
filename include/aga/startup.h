@@ -7,13 +7,13 @@
 #define AGA_STARTUP_H
 
 #include <aga/config.h>
-#include <aga/result.h>
+#include <asys/result.h>
 
 struct aga_resource_pack;
 
 struct aga_settings {
 #ifdef AGA_DEVBUILD
-	aga_bool_t compile;
+	asys_bool_t compile;
 	const char* build_file;
 #endif
 
@@ -26,31 +26,28 @@ struct aga_settings {
 
 	const char* respack;
 
-	aga_size_t audio_buffer;
-	aga_bool_t audio_enabled;
+	asys_size_t audio_buffer;
+	asys_bool_t audio_enabled;
 
 	const char* startup_script;
 	const char* python_path;
 
-	aga_size_t width;
-	aga_size_t height;
+	asys_size_t width;
+	asys_size_t height;
 
-	aga_bool_t mipmap_default;
+	asys_bool_t mipmap_default;
 
 	float fov;
 
-	aga_bool_t verbose;
+	asys_bool_t verbose;
 
 	struct aga_config_node config;
 };
 
 /* NOTE: We try to leave sensible defaults in `opts' during failure states. */
-enum aga_result aga_settings_new(struct aga_settings*, int, char**);
+enum asys_result aga_settings_new(struct aga_settings*, int, char**);
 
-enum aga_result aga_settings_parse_config(
+enum asys_result aga_settings_parse_config(
 		struct aga_settings*, struct aga_resource_pack*);
-
-/* TODO: Remove in next breaking update. */
-enum aga_result aga_prerun_hook(struct aga_settings*);
 
 #endif

@@ -3,10 +3,23 @@
  * Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#ifndef ASYS_STD_H
-#define ASYS_STD_H
+#ifndef ASYS_SYSTEM_H
+#define ASYS_SYSTEM_H
 
 #include <asys/base.h>
+
+#ifdef ASYS_WIN32
+# include <windows.h>
+#endif
+
+#ifdef ASYS_UNIX
+# include <unistd.h>
+# include <fcntl.h>
+# include <sys/stat.h>
+# include <sys/types.h>
+# include <getopt.h>
+# include <dirent.h>
+#endif
 
 #ifdef ASYS_STDC
 # include <stdio.h>
@@ -25,5 +38,7 @@
 #  endif
 # endif
 #endif
+
+#include <asys/varargs.h>
 
 #endif

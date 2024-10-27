@@ -33,8 +33,8 @@ index_off = 0
 min_exts = [ 0.0, 0.0, 0.0 ]
 max_exts = [ 0.0, 0.0, 0.0 ]
 
-proc = aiProcess_PreTransformVertices | aiProcess_Triangulate
-with pyassimp.load(argv[1], None, proc) as scene:
+function = aiProcess_PreTransformVertices | aiProcess_Triangulate
+with pyassimp.load(argv[1], None, function) as scene:
 	for mesh in scene.meshes:
 		for i in range(len(mesh.vertices)):
 			z = float32(0.0)

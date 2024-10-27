@@ -7,42 +7,42 @@
 #define AGA_PACK_H
 
 #include <aga/config.h>
+#include <asys/result.h>
 
-#include <aga/result.h>
+#include <asys/stream.h>
 
 #define AGA_PACK_MAGIC (0xA6AU)
 
 struct aga_resource_pack;
 
 struct aga_resource_pack_header {
-	aga_uint_t size;
-	aga_uint_t magic;
+	asys_uint_t size;
+	asys_uint_t magic;
 };
 
 struct aga_resource {
-	aga_size_t refcount;
-	aga_size_t offset; /* Offset into pack data fields, not `data' member. */
+	asys_size_t refcount;
+	asys_size_t offset; /* Offset into pack data fields, not `data' member. */
 
 	void* data;
-	aga_size_t size;
+	asys_size_t size;
 
 	struct aga_resource_pack* pack;
 
-	struct aga_config_node* conf;
+	struct aga_config_node* config;
 };
 
 struct aga_resource_pack {
-	void* fp;
-	aga_size_t size;
-	aga_size_t data_offset;
+	struct asys_stream stream;
+	asys_size_t data_offset;
 
 	/* TODO: This should eventually be a hashmap. */
-	struct aga_resource* db;
-	aga_size_t len; /* Alias for `pack->root.children->len'. */
+	struct aga_resource* resources;
+	asys_size_t count; /* Alias for `pack->root.children->len'. */
 
 	/* TODO: This should be enabled for dev builds, not just debug builds. */
 #ifndef NDEBUG
-	aga_size_t outstanding_refs;
+	asys_size_t outstanding_refs;
 #endif
 
 	struct aga_config_node root;
@@ -55,22 +55,23 @@ struct aga_resource_pack {
  */
 extern struct aga_resource_pack* aga_global_pack;
 
-enum aga_result aga_resource_pack_new(const char*, struct aga_resource_pack*);
-enum aga_result aga_resource_pack_delete(struct aga_resource_pack*);
+enum asys_result aga_resource_pack_new(const char*, struct aga_resource_pack*);
+enum asys_result aga_resource_pack_delete(struct aga_resource_pack*);
 
-enum aga_result aga_resource_pack_lookup(
+enum asys_result aga_resource_pack_lookup(
 		struct aga_resource_pack*, const char*, struct aga_resource**);
 
-enum aga_result aga_resource_pack_sweep(struct aga_resource_pack*);
+enum asys_result aga_resource_pack_sweep(struct aga_resource_pack*);
 
 /* Also counts as an acquire - i.e. initial refcount is 1. */
-enum aga_result aga_resource_new(
+enum asys_result aga_resource_new(
 		struct aga_resource_pack*, const char*, struct aga_resource**);
 
-enum aga_result aga_resource_stream(
-		struct aga_resource_pack*, const char*, void**, aga_size_t*);
+enum asys_result aga_resource_stream(
+		struct aga_resource_pack*, const char*, struct asys_stream**,
+		asys_size_t*);
 
-enum aga_result aga_resource_seek(struct aga_resource*, void**);
+enum asys_result aga_resource_seek(struct aga_resource*, struct asys_stream**);
 
 /*
  * NOTE: You should ensure that you acquire after any potential error
@@ -78,7 +79,7 @@ enum aga_result aga_resource_seek(struct aga_resource*, void**);
  * 		 Conditions during object destroy in order to avoid holding onto refs
  * 		 For invalid objects.
  */
-enum aga_result aga_resource_aquire(struct aga_resource*);
-enum aga_result aga_resource_release(struct aga_resource*);
+enum asys_result aga_resource_aquire(struct aga_resource*);
+enum asys_result aga_resource_release(struct aga_resource*);
 
 #endif

@@ -8,7 +8,7 @@
 struct aga_window {
 	void* hwnd;
     void* wgl;
-	aga_size_t width, height;
+	asys_size_t width, height;
 
 	int client_off_x, client_off_y;
 };
@@ -18,7 +18,7 @@ struct aga_window_device {
 	void* module;
 	void* cursor;
 	int class;
-	aga_bool_t visible, captured;
+	asys_bool_t visible, captured;
 };
 
 #endif

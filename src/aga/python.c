@@ -3,14 +3,13 @@
  * Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#include <aga/std.h>
 #include <aga/script.h>
-#include <aga/log.h>
 #include <aga/pack.h>
-#include <aga/utility.h>
-#include <aga/error.h>
 
 #include <agan/agan.h>
+
+#include <asys/log.h>
+#include <asys/string.h>
 
 /*
  * Defines a few misc. functions Python wants and a few scriptglue helpers
@@ -18,115 +17,112 @@
  */
 
 void py_fatal(const char* msg) {
-	aga_log(__FILE__, "Python Fatal Error: %s", msg);
+	asys_log(__FILE__, "Python Fatal Error: %s", msg);
 	abort();
 }
 
 void* py_open_r(const char* path) {
-	void* fp;
-	aga_size_t i;
+	struct asys_stream* stream;
+	asys_size_t i;
 
-	for(i = 0; i < aga_global_pack->len; ++i) {
-		struct aga_resource* res = &aga_global_pack->db[i];
-		if(aga_streql(path, res->conf->name)) {
-			enum aga_result result;
+	for(i = 0; i < aga_global_pack->count; ++i) {
+		struct aga_resource* resource = &aga_global_pack->resources[i];
 
-			result = aga_resource_seek(res, &fp);
+		if(!resource->config) continue;
+
+		asys_log(__FILE__, "%s ?= %s", path, resource->config->name);
+
+		if(asys_string_equal(path, resource->config->name)) {
+			enum asys_result result;
+
+			result = aga_resource_seek(resource, &stream);
 			if(result) {
-				aga_error_check_soft(__FILE__, "aga_resource_seek", result);
+				asys_log_result(__FILE__, "aga_resource_seek", result);
 				return 0;
 			}
 
-			return fp;
+			return stream->fp;
 		}
 	}
 
-	if(!(fp = fopen(path, "rb"))) aga_error_system_path(__FILE__, "fopen", path);
-	return fp;
+	return 0;
 }
 
-void py_close(void* fp) {
-	if(!fp) return;
-	if(fp == aga_global_pack->fp) return;
-
-	if(fclose(fp) == EOF) aga_error_system(__FILE__, "fclose");
-}
-
-aga_bool_t aga_arg_list(
+asys_bool_t aga_arg_list(
 		const struct py_object* args, enum py_type type) {
 
 	return args && args->type == type;
 }
 
-aga_bool_t aga_vararg_list(
-		const struct py_object* args, enum py_type type, aga_size_t len) {
+asys_bool_t aga_vararg_list(
+		const struct py_object* args, enum py_type type, asys_size_t len) {
 
 	return aga_arg_list(args, type) && py_varobject_size(args) == len;
 }
 
-aga_bool_t aga_vararg_list_typed(
-		const struct py_object* args, enum py_type type, aga_size_t len,
+asys_bool_t aga_vararg_list_typed(
+		const struct py_object* args, enum py_type type, asys_size_t len,
 		enum py_type membtype) {
 
 	unsigned i;
-	aga_bool_t b = aga_vararg_list(args, type, len);
+	asys_bool_t b = aga_vararg_list(args, type, len);
 
-	if(!b) return AGA_FALSE;
+	if(!b) return ASYS_FALSE;
 
 	for(i = 0; i < len; ++i) {
 		if(type == PY_TYPE_LIST) {
-			if(py_list_get(args, i)->type != membtype) return AGA_FALSE;
+			if(py_list_get(args, i)->type != membtype) return ASYS_FALSE;
 		}
 		else if(type == PY_TYPE_TUPLE) {
-			if(py_tuple_get(args, i)->type != membtype) return AGA_FALSE;
+			if(py_tuple_get(args, i)->type != membtype) return ASYS_FALSE;
 		}
 	}
 
-	return AGA_TRUE;
+	return ASYS_TRUE;
 }
 
-aga_bool_t aga_arg(
-		struct py_object** v, struct py_object* args, aga_size_t n,
+asys_bool_t aga_arg(
+		struct py_object** v, struct py_object* args, asys_size_t n,
 		enum py_type type) {
 
 	return (*v = py_tuple_get(args, (unsigned) n)) && (*v)->type == type;
 }
 
-aga_bool_t aga_vararg(
-		struct py_object** v, struct py_object* args, aga_size_t n,
-		enum py_type type, aga_size_t len) {
+asys_bool_t aga_vararg(
+		struct py_object** v, struct py_object* args, asys_size_t n,
+		enum py_type type, asys_size_t len) {
 
 	return aga_arg(v, args, n, type) && py_varobject_size(*v) == len;
 }
 
-aga_bool_t aga_vararg_typed(
-		struct py_object** v, struct py_object* args, aga_size_t n,
-		enum py_type type, aga_size_t len, enum py_type membtype) {
+asys_bool_t aga_vararg_typed(
+		struct py_object** v, struct py_object* args, asys_size_t n,
+		enum py_type type, asys_size_t len, enum py_type membtype) {
 
 	unsigned i;
-	aga_bool_t b = aga_vararg(v, args, n, type, len);
+	asys_bool_t b = aga_vararg(v, args, n, type, len);
 
-	if(!b) return AGA_FALSE;
+	if(!b) return ASYS_FALSE;
 
 	for(i = 0; i < len; ++i) {
 		if(type == PY_TYPE_LIST) {
-			if(py_list_get(*v, i)->type != membtype) return AGA_FALSE;
+			if(py_list_get(*v, i)->type != membtype) return ASYS_FALSE;
 		}
 		else if(type == PY_TYPE_TUPLE) {
-			if(py_tuple_get(*v, i)->type != membtype) return AGA_FALSE;
+			if(py_tuple_get(*v, i)->type != membtype) return ASYS_FALSE;
 		}
 	}
 
-	return AGA_TRUE;
+	return ASYS_TRUE;
 }
 
-void* aga_arg_error(const char* proc, const char* types) {
-	aga_fixed_buf_t buf = { 0 };
+void* aga_arg_error(const char* function, const char* types) {
+	asys_fixed_buffer_t buffer = { 0 };
 
-	strcat(buf, proc);
-	strcat(buf, "() arguments must be ");
-	strcat(buf, types);
-	py_error_set_string(py_type_error, buf);
+	strcat(buffer, function);
+	strcat(buffer, "() arguments must be ");
+	strcat(buffer, types);
+	py_error_set_string(py_type_error, buffer);
 
 	return 0;
 }

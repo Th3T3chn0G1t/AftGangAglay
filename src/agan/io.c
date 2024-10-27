@@ -10,10 +10,10 @@
 
 #include <apro.h>
 
-static enum aga_result aga_setkeys(void);
+static enum asys_result aga_setkeys(void);
 
-enum aga_result agan_io_register(struct py_env* env) {
-	enum aga_result result;
+enum asys_result agan_io_register(struct py_env* env) {
+	enum asys_result result;
 
 	(void) env;
 
@@ -26,14 +26,14 @@ enum aga_result agan_io_register(struct py_env* env) {
 		return result;
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 struct py_object* agan_getkey(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	enum aga_result result;
-	aga_bool_t b;
+	enum asys_result result;
+	asys_bool_t b;
 	struct aga_keymap* keymap = AGA_GET_USERDATA(env)->keymap;
 
 	(void) env;
@@ -86,7 +86,7 @@ struct py_object* agan_getmotion(
 struct py_object* agan_setcursor(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	enum aga_result result;
+	enum asys_result result;
 
 	struct py_object* v;
 	struct py_object* c;
@@ -138,7 +138,7 @@ struct py_object* agan_getbuttons(
 
 	if(!(retval = py_list_new(AGA_BUTTON_MAX))) return py_error_set_nomem();
 
-	for(i = 0; i < AGA_LEN(buttons->states); ++i) {
+	for(i = 0; i < ASYS_LENGTH(buttons->states); ++i) {
 		struct py_object* v;
 
 		if(!(v = py_int_new(buttons->states[i]))) return py_error_set_nomem();
@@ -181,8 +181,8 @@ struct py_object* agan_getpos(
 }
 
 
-static enum aga_result aga_setkeys(void) {
-	enum aga_result result;
+static enum asys_result aga_setkeys(void) {
+	enum asys_result result;
 #define aga_(name, value) \
 	do { \
 		result = aga_insertint(name, value); \
@@ -449,5 +449,5 @@ static enum aga_result aga_setkeys(void) {
 #endif
 #undef aga_
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }

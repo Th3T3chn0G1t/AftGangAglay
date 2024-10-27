@@ -6,8 +6,8 @@
 #ifndef AGA_CONFIG_H
 #define AGA_CONFIG_H
 
-#include <aga/environment.h>
-#include <aga/result.h>
+#include <asys/base.h>
+#include <asys/result.h>
 
 /*
  * NOTE: This is a pretty restrictive way to represent the quite versatile
@@ -15,8 +15,13 @@
  * 		 Now.
  */
 
+struct asys_stream;
+
 enum aga_config_node_type {
-	AGA_NONE, AGA_STRING, AGA_INTEGER, AGA_FLOAT
+	AGA_NONE,
+	AGA_STRING,
+	AGA_INTEGER,
+	AGA_FLOAT
 };
 
 typedef asys_native_long_t aga_config_int_t;
@@ -32,34 +37,33 @@ struct aga_config_node {
 		double flt;
 	} data;
 
-	aga_size_t scratch; /* Library internal - you peeked behind the curtain. */
+	asys_size_t scratch;
 
 	struct aga_config_node* children;
-	aga_size_t len;
+	asys_size_t len;
 };
 
-/* Specify the filename of the config file being parsed for debug purposes. */
-extern const char* aga_config_debug_file;
+enum asys_result aga_config_new(
+		struct asys_stream*, asys_size_t, struct aga_config_node*);
 
-enum aga_result aga_config_new(void*, aga_size_t, struct aga_config_node*);
-enum aga_result aga_config_delete(struct aga_config_node*);
+enum asys_result aga_config_delete(struct aga_config_node*);
 
-aga_bool_t aga_config_variable(
+asys_bool_t aga_config_variable(
 		const char*, struct aga_config_node*, enum aga_config_node_type, void*);
 
-enum aga_result aga_config_lookup_raw(
-		struct aga_config_node*, const char**, aga_size_t,
+enum asys_result aga_config_lookup_raw(
+		struct aga_config_node*, const char**, asys_size_t,
 		struct aga_config_node**);
 
 /* Just wraps `aga_config_lookup_raw' with verbose EH. */
-enum aga_result aga_config_lookup_check(
-		struct aga_config_node*, const char**, aga_size_t,
+enum asys_result aga_config_lookup_check(
+		struct aga_config_node*, const char**, asys_size_t,
 		struct aga_config_node**);
 
-enum aga_result aga_config_lookup(
-		struct aga_config_node*, const char**, aga_size_t, void*,
-		enum aga_config_node_type, aga_bool_t);
+enum asys_result aga_config_lookup(
+		struct aga_config_node*, const char**, asys_size_t, void*,
+		enum aga_config_node_type, asys_bool_t);
 
-enum aga_result aga_config_dump(struct aga_config_node*, void*);
+enum asys_result aga_config_dump(struct aga_config_node*, struct asys_stream*);
 
 #endif

@@ -3,9 +3,7 @@
  * Copyright (C) 2023, 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#include <aga/log.h>
-#include <aga/std.h>
-#include <aga/error.h>
+#include <asys/log.h>
 
 #ifdef _WIN32
 # define AGA_WANT_WINDOWS_H
@@ -54,9 +52,9 @@ void aga_win32_log_set(void) {
 	}
 
 	if(!SetConsoleMode(con, mode | ENABLE_VIRTUAL_TERMINAL_INPUT)) {
-		aga_log_context.have_ansi = AGA_FALSE;
+		aga_log_context.have_ansi = ASYS_FALSE;
 		(void) aga_win32_error(__FILE__, "SetConsoleMode");
-		aga_log(__FILE__, "We don't seem to have ANSI terminal support");
+		asys_log(__FILE__, "We don't seem to have ANSI terminal support");
 	}
 }
 

@@ -8,12 +8,12 @@
 typedef unsigned long aga_xid_t;
 
 struct aga_window {
-	aga_size_t width, height;
+	asys_size_t width, height;
 
 	aga_xid_t window;
 	void* glx;
 
-	aga_bool_t double_buffered;
+	asys_bool_t double_buffered;
 
 	aga_xid_t blank_cursor, arrow_cursor;
 };

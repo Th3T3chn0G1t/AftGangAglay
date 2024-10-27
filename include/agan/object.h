@@ -36,9 +36,9 @@ struct agan_lightdata {
 	float exponent;
 	float angle;
 
-	aga_bool_t directional;
+	asys_bool_t directional;
 
-	aga_uchar_t index;
+	asys_uchar_t index;
 };
 
 /*
@@ -54,18 +54,19 @@ struct agan_object {
 	struct py_object* transform;
 	struct aga_resource* res;
 	struct agan_lightdata* light_data;
-	aga_uint_t ind;
+	asys_uint_t ind;
 
+	/* TODO: This only needs to exist in devbuilds. */
 	char* modelpath;
 
-	aga_uint_t drawlist;
+	asys_uint_t drawlist;
 	float min_extent[3];
 	float max_extent[3];
 };
 
-enum aga_result agan_getobjconf(struct agan_object*, struct aga_config_node*);
+enum asys_result agan_getobjconf(struct agan_object*, struct aga_config_node*);
 
-enum aga_result agan_obj_register(struct py_env*);
+enum asys_result agan_obj_register(struct py_env*);
 
 struct py_object* agan_mkobj(
 		struct py_env* env, struct py_object*, struct py_object*);

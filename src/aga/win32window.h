@@ -13,8 +13,6 @@
  * 		 NT3.5 had GL support so we may need to look at that.
  */
 
-#include <aga/error.h>
-#include <aga/utility.h>
 
 #define AGA_WANT_WINDOWS_H
 
@@ -49,8 +47,8 @@ struct aga_winproc_pack {
 	struct aga_keymap* keymap;
 	struct aga_pointer* pointer;
 	struct aga_buttons* buttons;
-	aga_bool_t* die;
-	aga_uint_t magic;
+	asys_bool_t* die;
+	asys_uint_t magic;
 };
 
 static void aga_setbuttondown(struct aga_buttons* b, enum aga_button t) {
@@ -66,7 +64,7 @@ static LRESULT CALLBACK aga_winproc(
 		HWND wnd, UINT msg, WPARAM w_param, LPARAM l_param) {
 
 	struct aga_winproc_pack* pack;
-	aga_bool_t down = AGA_TRUE;
+	asys_bool_t down = ASYS_TRUE;
 
 	if(msg == WM_NCCREATE) return TRUE;
 
@@ -90,8 +88,8 @@ static LRESULT CALLBACK aga_winproc(
 		}
 
 		case WM_KEYUP: {
-			down = AGA_FALSE;
-			AGA_FALLTHROUGH;
+			down = ASYS_FALSE;
+			ASYS_FALLTHROUGH;
 		}
 		/* FALLTHROUGH */
 		case WM_KEYDOWN: {
@@ -128,7 +126,7 @@ static LRESULT CALLBACK aga_winproc(
 					hnd, RID_INPUT, data, &input_size, header_size);
 			if(result == err) {
 				(void) aga_win32_error(__FILE__, "GetRawInputData");
-				aga_free(data);
+				asys_memory_free(data);
 				return 0;
 			}
 
@@ -137,7 +135,7 @@ static LRESULT CALLBACK aga_winproc(
 				pack->pointer->dy = data->data.mouse.lLastY;
 			}
 
-			aga_free(data);
+			asys_memory_free(data);
 			return 0;
 		}
 
@@ -175,7 +173,7 @@ static LRESULT CALLBACK aga_winproc(
 		}
 
 		case WM_CLOSE: {
-			*pack->die = AGA_TRUE;
+			*pack->die = ASYS_TRUE;
 			return 0;
 		}
 	}
@@ -186,17 +184,17 @@ static LRESULT CALLBACK aga_winproc(
  * (see libs/video/targets/).
  */
 
-enum aga_result aga_window_device_new(
+enum asys_result aga_window_device_new(
 		struct aga_window_device* env, const char* display) {
 
 	WNDCLASSA class;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
 
 	(void) display;
 
-	env->captured = AGA_FALSE;
-	env->visible = AGA_TRUE;
+	env->captured = ASYS_FALSE;
+	env->visible = ASYS_TRUE;
 
 	if(!(env->module = GetModuleHandle(0))) {
 		return aga_win32_error(__FILE__, "GetModuleHandle");
@@ -228,47 +226,47 @@ enum aga_result aga_window_device_new(
 		return aga_win32_error(__FILE__, "RegisterClass");
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_device_delete(struct aga_window_device* env) {
-	if(!env) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_window_device_delete(struct aga_window_device* env) {
+	if(!env) return ASYS_RESULT_BAD_PARAM;
 
 	if(!UnregisterClass(AGA_CLASS_NAME, 0)) {
 		return aga_win32_error(__FILE__, "UnregisterClass");
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_keymap_new(
+enum asys_result aga_keymap_new(
 		struct aga_keymap* keymap, struct aga_window_device* env) {
 
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
-	if(!env) return AGA_RESULT_BAD_PARAM;
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
 
 	/* VK_OEM_CLEAR + 1 */
-	keymap->states = aga_calloc(AGAW_KEYMAX, sizeof(aga_bool_t));
+	keymap->states = aga_calloc(AGAW_KEYMAX, sizeof(asys_bool_t));
 	if(!keymap->states) return aga_error_system(__FILE__, "aga_calloc");
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_keymap_delete(struct aga_keymap* keymap) {
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
+enum asys_result aga_keymap_delete(struct aga_keymap* keymap) {
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
 
-	aga_free(keymap->states);
+	asys_memory_free(keymap->states);
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-static enum aga_result aga_window_set_wgl(
+static enum asys_result aga_window_set_wgl(
 		struct aga_window_device* env, struct aga_window* win, void* dc) {
 
 	HGDIOBJ font;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(!(win->wgl = wglCreateContext(dc))) {
 		return aga_win32_error(__FILE__, "wglCreateContext");
@@ -296,17 +294,17 @@ static enum aga_result aga_window_set_wgl(
 		}
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_new(
-		aga_size_t width, aga_size_t height, const char* title,
+enum asys_result aga_window_new(
+		asys_size_t width, asys_size_t height, const char* title,
 		struct aga_window_device* env, struct aga_window* win,
-		aga_bool_t do_wgl, int argc, char** argv) {
+		asys_bool_t do_wgl, int argc, char** argv) {
 
 	static const long mask = WS_VISIBLE | WS_OVERLAPPEDWINDOW;
 
-	enum aga_result result;
+	enum asys_result result;
 
 	RAWINPUTDEVICE mouse = {
 			HID_USAGE_PAGE_GENERIC, HID_USAGE_GENERIC_MOUSE, 0, 0 };
@@ -317,8 +315,8 @@ enum aga_result aga_window_new(
 	(void) argc;
 	(void) argv;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	/* TODO: Leaky error states. */
 	win->hwnd = CreateWindow(
@@ -374,14 +372,14 @@ enum aga_result aga_window_new(
 		win->client_off_y = r.top;
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_delete(
+enum asys_result aga_window_delete(
 		struct aga_window_device* env, struct aga_window* win) {
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
     if(win->wgl && !wglDeleteContext(win->wgl)) {
         return aga_win32_error(__FILE__, "wglDeleteContext");
@@ -391,17 +389,17 @@ enum aga_result aga_window_delete(
 		return aga_win32_error(__FILE__, "DestroyWindow");
 	}
 
-    return AGA_RESULT_OK;
+    return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_select(
+enum asys_result aga_window_select(
 		struct aga_window_device* env, struct aga_window* win) {
 
 	void* dc;
 
 	(void) env;
 
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(!(dc = GetDC((void*) win->hwnd))) {
 		return aga_win32_error(__FILE__, "GetDC");
@@ -415,32 +413,32 @@ enum aga_result aga_window_select(
 		return aga_win32_error(__FILE__, "ReleaseDC");
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_keymap_lookup(
-		struct aga_keymap* keymap, unsigned sym, aga_bool_t* state) {
+enum asys_result aga_keymap_lookup(
+		struct aga_keymap* keymap, unsigned sym, asys_bool_t* state) {
 
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
-	if(!state) return AGA_RESULT_BAD_PARAM;
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
+	if(!state) return ASYS_RESULT_BAD_PARAM;
 
-	if(!keymap->states) return AGA_RESULT_ERROR;
+	if(!keymap->states) return ASYS_RESULT_ERROR;
 
-	if(sym > AGAW_KEYMAX) return AGA_RESULT_BAD_OP;
+	if(sym > AGAW_KEYMAX) return ASYS_RESULT_BAD_OP;
 
 	*state = keymap->states[sym];
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-static enum aga_result aga_setclipcursor(
-		struct aga_window* win, aga_bool_t clip) {
+static enum asys_result aga_setclipcursor(
+		struct aga_window* win, asys_bool_t clip) {
 
 	RECT rect;
 	POINT begin;
 	POINT end;
 
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(clip) {
 		if(!GetClientRect(win->hwnd, &rect)) {
@@ -473,15 +471,15 @@ static enum aga_result aga_setclipcursor(
 
 	ClipCursor(clip ? &rect : 0);
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_set_cursor(
+enum asys_result aga_window_set_cursor(
 		struct aga_window_device* env, struct aga_window* win,
-		aga_bool_t visible, aga_bool_t captured) {
+		asys_bool_t visible, asys_bool_t captured) {
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	SetCursor(visible ? env->cursor : 0);
 	env->visible = visible;
@@ -491,13 +489,13 @@ enum aga_result aga_window_set_cursor(
 	return aga_setclipcursor(win, captured);
 }
 
-enum aga_result aga_window_swap(
+enum asys_result aga_window_swap(
 		struct aga_window_device* env, struct aga_window* win) {
 
 	void* dc;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(!(dc = GetDC((void*) win->hwnd))) {
 		return aga_win32_error(__FILE__, "GetDC");
@@ -511,25 +509,25 @@ enum aga_result aga_window_swap(
 		return aga_win32_error(__FILE__, "ReleaseDC");
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_window_device_poll(
+enum asys_result aga_window_device_poll(
 		struct aga_window_device* env, struct aga_keymap* keymap,
-		struct aga_window* win, struct aga_pointer* pointer, aga_bool_t* die,
+		struct aga_window* win, struct aga_pointer* pointer, asys_bool_t* die,
 		struct aga_buttons* buttons) {
 
-	enum aga_result result;
+	enum asys_result result;
 	MSG msg;
 	struct aga_winproc_pack pack;
-	aga_size_t i;
+	asys_size_t i;
 
-	if(!env) return AGA_RESULT_BAD_PARAM;
-	if(!keymap) return AGA_RESULT_BAD_PARAM;
-	if(!win) return AGA_RESULT_BAD_PARAM;
-	if(!pointer) return AGA_RESULT_BAD_PARAM;
-	if(!die) return AGA_RESULT_BAD_PARAM;
-	if(!buttons) return AGA_RESULT_BAD_PARAM;
+	if(!env) return ASYS_RESULT_BAD_PARAM;
+	if(!keymap) return ASYS_RESULT_BAD_PARAM;
+	if(!win) return ASYS_RESULT_BAD_PARAM;
+	if(!pointer) return ASYS_RESULT_BAD_PARAM;
+	if(!die) return ASYS_RESULT_BAD_PARAM;
+	if(!buttons) return ASYS_RESULT_BAD_PARAM;
 
 	pack.die = die;
 	pack.keymap = keymap;
@@ -538,7 +536,7 @@ enum aga_result aga_window_device_poll(
 	pack.magic = AGA_WINPROC_PACK_MAGIC;
 	pack.win = win;
 
-	for(i = 0; i < AGA_LEN(buttons->states); ++i) {
+	for(i = 0; i < ASYS_LENGTH(buttons->states); ++i) {
 		if(buttons->states[i] == AGA_BUTTON_CLICK) {
 			buttons->states[i] = AGA_BUTTON_DOWN;
 		}
@@ -560,20 +558,20 @@ enum aga_result aga_window_device_poll(
 		DispatchMessage(&msg);
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_dialog(
-		const char* message, const char* title, aga_bool_t* response,
-		aga_bool_t is_error) {
+enum asys_result aga_dialog(
+		const char* message, const char* title, asys_bool_t* response,
+		asys_bool_t is_error) {
 
 	DWORD icon = is_error ? MB_ICONERROR : MB_ICONINFORMATION;
 	DWORD flags = MB_YESNO | MB_TASKMODAL | icon;
 	int res;
 
-	if(!message) return AGA_RESULT_BAD_PARAM;
-	if(!title) return AGA_RESULT_BAD_PARAM;
-	if(!response) return AGA_RESULT_BAD_PARAM;
+	if(!message) return ASYS_RESULT_BAD_PARAM;
+	if(!title) return ASYS_RESULT_BAD_PARAM;
+	if(!response) return ASYS_RESULT_BAD_PARAM;
 
 	if(!(res = MessageBox(0, message, title, flags))) {
 		return aga_win32_error(__FILE__, "MessageBox");
@@ -581,38 +579,38 @@ enum aga_result aga_dialog(
 
 	*response = (res == IDYES);
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-static enum aga_result aga_windiagerr(DWORD err) {
+static enum asys_result aga_windiagerr(DWORD err) {
 	switch(err) {
-		default: return AGA_RESULT_ERROR;
-		case CDERR_DIALOGFAILURE: return AGA_RESULT_ERROR;
-		case CDERR_FINDRESFAILURE: return AGA_RESULT_ERROR;
-		case CDERR_INITIALIZATION: return AGA_RESULT_OOM;
-		case CDERR_LOADRESFAILURE: return AGA_RESULT_ERROR;
-		case CDERR_LOADSTRFAILURE: return AGA_RESULT_ERROR;
-		case CDERR_LOCKRESFAILURE: return AGA_RESULT_BAD_OP;
-		case CDERR_MEMALLOCFAILURE: return AGA_RESULT_OOM;
-		case CDERR_MEMLOCKFAILURE: return AGA_RESULT_BAD_OP;
-		case CDERR_NOHINSTANCE: return AGA_RESULT_ERROR;
-		case CDERR_NOHOOK: return AGA_RESULT_ERROR;
-		case CDERR_NOTEMPLATE: return AGA_RESULT_ERROR;
-		case CDERR_REGISTERMSGFAIL: return AGA_RESULT_ERROR;
-		case CDERR_STRUCTSIZE: return AGA_RESULT_BAD_PARAM;
-		case FNERR_BUFFERTOOSMALL: return AGA_RESULT_ERROR;
-		case FNERR_INVALIDFILENAME: return AGA_RESULT_BAD_PARAM;
-		case FNERR_SUBCLASSFAILURE: return AGA_RESULT_OOM;
+		default: return ASYS_RESULT_ERROR;
+		case CDERR_DIALOGFAILURE: return ASYS_RESULT_ERROR;
+		case CDERR_FINDRESFAILURE: return ASYS_RESULT_ERROR;
+		case CDERR_INITIALIZATION: return ASYS_RESULT_OOM;
+		case CDERR_LOADRESFAILURE: return ASYS_RESULT_ERROR;
+		case CDERR_LOADSTRFAILURE: return ASYS_RESULT_ERROR;
+		case CDERR_LOCKRESFAILURE: return ASYS_RESULT_BAD_OP;
+		case CDERR_MEMALLOCFAILURE: return ASYS_RESULT_OOM;
+		case CDERR_MEMLOCKFAILURE: return ASYS_RESULT_BAD_OP;
+		case CDERR_NOHINSTANCE: return ASYS_RESULT_ERROR;
+		case CDERR_NOHOOK: return ASYS_RESULT_ERROR;
+		case CDERR_NOTEMPLATE: return ASYS_RESULT_ERROR;
+		case CDERR_REGISTERMSGFAIL: return ASYS_RESULT_ERROR;
+		case CDERR_STRUCTSIZE: return ASYS_RESULT_BAD_PARAM;
+		case FNERR_BUFFERTOOSMALL: return ASYS_RESULT_ERROR;
+		case FNERR_INVALIDFILENAME: return ASYS_RESULT_BAD_PARAM;
+		case FNERR_SUBCLASSFAILURE: return ASYS_RESULT_OOM;
 	}
 }
 
-enum aga_result aga_dialog_file(char** result) {
+enum asys_result aga_dialog_file(char** result) {
 	OPENFILENAMEA openfile = { 0 };
 
-	if(!result) return AGA_RESULT_BAD_PARAM;
+	if(!result) return ASYS_RESULT_BAD_PARAM;
 
 	/* Not ideal but seems to be correct for this particular invoc. pattern. */
-	if(!(*result = aga_calloc(MAX_PATH, sizeof(char)))) return AGA_RESULT_OOM;
+	if(!(*result = aga_calloc(MAX_PATH, sizeof(char)))) return ASYS_RESULT_OOM;
 
 	openfile.lStructSize = sizeof(openfile);
 	openfile.lpstrFilter = "All Files\0*.*\0\0";
@@ -622,20 +620,20 @@ enum aga_result aga_dialog_file(char** result) {
 	openfile.Flags = OFN_FILEMUSTEXIST;
 
 	if(!GetOpenFileName(&openfile)) {
-		aga_free(*result);
+		asys_memory_free(*result);
 		return aga_windiagerr(CommDlgExtendedError());
 	}
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-enum aga_result aga_shell_open(const char* uri) {
+enum asys_result aga_shell_open(const char* uri) {
 	int flags = SW_SHOWNORMAL;
 
-	if(!uri) return AGA_RESULT_BAD_PARAM;
+	if(!uri) return ASYS_RESULT_BAD_PARAM;
 
 	if((INT_PTR) ShellExecute(0, 0, uri, 0, 0, flags) > 32) {
-		return AGA_RESULT_OK;
+		return ASYS_RESULT_OK;
 	}
 
 	return aga_win32_error_path(__FILE__, "ShellExecute", uri);

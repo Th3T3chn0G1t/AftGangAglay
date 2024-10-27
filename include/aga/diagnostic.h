@@ -6,17 +6,17 @@
 #ifndef AGA_DIAGNOSTIC_H
 #define AGA_DIAGNOSTIC_H
 
-#include <aga/environment.h>
-#include <aga/log.h>
+#include <asys/base.h>
+#include <asys/log.h>
 
 /* TODO: Turn off for noverify. */
 
 #define AGA_DEPRECATED_IMPL(msg) \
 	do { \
-		static aga_bool_t _deprflag = AGA_TRUE; \
+		static asys_bool_t _deprflag = ASYS_TRUE; \
 		if(_deprflag) { \
-			aga_log(__FILE__, "warn: %s", msg); \
-			_deprflag = AGA_FALSE; \
+			asys_log(__FILE__, "warn: %s", msg); \
+			_deprflag = ASYS_FALSE; \
 		} \
 	} while(0)
 

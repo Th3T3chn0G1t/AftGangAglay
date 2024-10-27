@@ -7,17 +7,18 @@
 #include <agan/draw.h>
 
 #include <aga/gl.h>
-#include <aga/utility.h>
 #include <aga/startup.h>
-#include <aga/log.h>
 #include <aga/draw.h>
 #include <aga/script.h>
 #include <aga/pack.h>
 #include <aga/io.h>
-#include <aga/error.h>
 #include <aga/diagnostic.h>
 
 #include <apro.h>
+
+#include <asys/log.h>
+#include <asys/memory.h>
+#include <asys/string.h>
 
 /* TODO: Some `aga_script_*err` disable with noverify. */
 
@@ -33,15 +34,24 @@
  * TODO: "Portal" object property using stencil buffers and camera state.
  */
 
-enum aga_result agan_obj_register(struct py_env* env) {
+#define AGA_SWAP_FLOAT(a, b) \
+	do { \
+		float scratch = b; \
+		b = a; \
+		a = scratch; \
+	} while(0)
+
+#define AGA_TRANSFORM_TOLERANCE (0.001)
+
+enum asys_result agan_obj_register(struct py_env* env) {
 	(void) env;
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
-static aga_bool_t agan_mkobj_trans(
+static asys_bool_t agan_mkobj_trans(
 		struct agan_object* obj, struct aga_config_node* conf) {
 
-	enum aga_result result;
+	enum asys_result result;
 	const char* path[2];
 
 	struct py_object* l;
@@ -55,15 +65,15 @@ static aga_bool_t agan_mkobj_trans(
 		l = py_dict_lookup(obj->transform, agan_trans_components[i]);
 		if(!l) {
 			py_error_set_key();
-			return AGA_TRUE;
+			return ASYS_TRUE;
 		}
 
 		for(j = 0; j < 3; ++j) {
 			path[1] = agan_xyz[j];
 
 			result = aga_config_lookup(
-					conf->children, path, AGA_LEN(path), &f, AGA_FLOAT,
-					AGA_FALSE);
+					conf->children, path, ASYS_LENGTH(path), &f, AGA_FLOAT,
+					ASYS_FALSE);
 
 			if(result) f = 0.0f;
 
@@ -76,7 +86,7 @@ static aga_bool_t agan_mkobj_trans(
 		}
 	}
 
-	return AGA_FALSE;
+	return ASYS_FALSE;
 }
 
 static void agan_mkobj_extent(
@@ -88,17 +98,17 @@ static void agan_mkobj_extent(
 	float (*min)[3] = &obj->min_extent;
 	float (*max)[3] = &obj->max_extent;
 
-	aga_size_t i;
+	asys_size_t i;
 
 	for(i = 0; i < 3; ++i) {
 		double v;
 
-		if(aga_config_lookup(conf, &min_attr[i], 1, &v, AGA_FLOAT, AGA_FALSE)) {
+		if(aga_config_lookup(conf, &min_attr[i], 1, &v, AGA_FLOAT, ASYS_FALSE)) {
 			(*min)[i] = 0.0f;
 		}
 		else (*min)[i] = (float) v;
 
-		if(aga_config_lookup(conf, &max_attr[i], 1, &v, AGA_FLOAT, AGA_FALSE)) {
+		if(aga_config_lookup(conf, &max_attr[i], 1, &v, AGA_FLOAT, ASYS_FALSE)) {
 			(*max)[i] = 0.0f;
 		}
 		else (*max)[i] = (float) v;
@@ -109,7 +119,7 @@ static void agan_mkobj_extent(
  * TODO: Object models should be able to specify a billboard texture for auto
  * 		 LOD -- especially when we have our zoning/distance culling system.
  */
-static aga_bool_t agan_mkobj_model(
+static asys_bool_t agan_mkobj_model(
 		struct py_env* env, struct agan_object* obj,
 		struct aga_config_node* conf, struct aga_resource_pack* pack,
 		const char* objpath) {
@@ -121,7 +131,7 @@ static aga_bool_t agan_mkobj_model(
 
 	struct aga_settings* settings = AGA_GET_USERDATA(env)->opts;
 
-	enum aga_result result;
+	enum asys_result result;
 
 	struct aga_resource* res;
 	unsigned mode = GL_COMPILE;
@@ -150,24 +160,24 @@ static aga_bool_t agan_mkobj_model(
 	if(aga_script_gl_err("glNewList")) return 0;
 
 	{
-		aga_bool_t do_mips, tex_filter;
+		asys_bool_t do_mips, tex_filter;
 		aga_config_int_t v;
 
 		result = aga_config_lookup(
-				conf->children, &filter, 1, &v, AGA_INTEGER, AGA_FALSE);
+				conf->children, &filter, 1, &v, AGA_INTEGER, ASYS_FALSE);
 		if(result) v = 1;
 		tex_filter = !!v;
 
 		result = aga_config_lookup(
-				conf->children, &mipmap, 1, &v, AGA_INTEGER, AGA_FALSE);
+				conf->children, &mipmap, 1, &v, AGA_INTEGER, ASYS_FALSE);
 		if(result) v = settings->mipmap_default;
 		do_mips = !!v;
 
 		result = aga_config_lookup(
-				conf->children, &texture, 1, &path, AGA_STRING, AGA_FALSE);
+				conf->children, &texture, 1, &path, AGA_STRING, ASYS_FALSE);
 		if(result) {
 			/* TODO: Does this handle this case gracefully. */
-			aga_log(
+			asys_log(
 					__FILE__, "warn: Object `%s' is missing a texture entry",
 					objpath);
 		}
@@ -188,20 +198,20 @@ static aga_bool_t agan_mkobj_model(
 			 *       Procedural resources?
 			 */
 			result = aga_resource_new(pack, path, &res);
-			if(aga_script_err("aga_resource_new", result)) return AGA_TRUE;
+			if(aga_script_err("aga_resource_new", result)) return ASYS_TRUE;
 
 			result = aga_resource_release(res);
-			if(aga_script_err("aga_resource_release", result)) return AGA_TRUE;
+			if(aga_script_err("aga_resource_release", result)) return ASYS_TRUE;
 
 			result = aga_config_lookup(
-					res->conf, &width, 1, &w, AGA_INTEGER, AGA_FALSE);
+					res->config, &width, 1, &w, AGA_INTEGER, ASYS_FALSE);
 			if(result) {
 				/* TODO: Default conf values as part of the API. */
-				aga_log(__FILE__, "warn: Texture `%s' is missing dimensions");
+				asys_log(__FILE__, "warn: Texture `%s' is missing dimensions");
 				w = 0;
 				h = 0;
 			}
-			else h = (int) (res->size / (aga_size_t) (4 * w));
+			else h = (int) (res->size / (asys_size_t) (4 * w));
 
 			/*
 			 * TODO: Non-alpha textures for more effective use of GPU memory
@@ -219,14 +229,14 @@ static aga_bool_t agan_mkobj_model(
 				 * 		 Especially in functions like this which aren't
 				 * 		 Supposed to be run every frame.
 				 */
-				if(aga_script_gl_err("gluBuild2DMipmaps")) return AGA_TRUE;
+				if(aga_script_gl_err("gluBuild2DMipmaps")) return ASYS_TRUE;
 			}
 			else {
 				glTexImage2D(
 						GL_TEXTURE_2D, 0, 4, (int) w, (int) h, 0, GL_RGBA,
 						GL_UNSIGNED_BYTE, res->data);
 
-				if(aga_script_gl_err("glTexImage2D")) return AGA_TRUE;
+				if(aga_script_gl_err("glTexImage2D")) return ASYS_TRUE;
 			}
 
 			{
@@ -242,17 +252,17 @@ static aga_bool_t agan_mkobj_model(
 				else min = mag;
 
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min);
-				if(aga_script_gl_err("glTexParameteri")) return AGA_TRUE;
+				if(aga_script_gl_err("glTexParameteri")) return ASYS_TRUE;
 
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag);
-				if(aga_script_gl_err("glTexParameteri")) return AGA_TRUE;
+				if(aga_script_gl_err("glTexParameteri")) return ASYS_TRUE;
 			}
 		}
 
 		result = aga_config_lookup(
-				conf->children, &model, 1, &path, AGA_STRING, AGA_FALSE);
+				conf->children, &model, 1, &path, AGA_STRING, ASYS_FALSE);
 		if(result) {
-			aga_log(
+			asys_log(
 					__FILE__, "warn: Object `%s' is missing a model entry",
 					objpath);
 		}
@@ -260,62 +270,67 @@ static aga_bool_t agan_mkobj_model(
 			static const char* version = "Version";
 
 			struct aga_vertex vert;
-			void* fp;
-			aga_size_t i, len;
+			struct asys_stream* stream;
+			asys_size_t i, len;
 			aga_config_int_t ver;
 
-			aga_free(obj->modelpath);
-			if(!(obj->modelpath = aga_strdup(path))) {
+			asys_memory_free(obj->modelpath);
+			if(!(obj->modelpath = asys_string_duplicate(path))) {
 				py_error_set_nomem();
 				return 0;
 			}
 
 			result = aga_resource_pack_lookup(pack, path, &res);
 			if(aga_script_err("aga_resource_pack_lookup", result)) {
-				aga_log(__FILE__, "err: Failed to find resource `%s'", path);
-				return AGA_TRUE;
+				asys_log(__FILE__, "err: Failed to find resource `%s'", path);
+				return ASYS_TRUE;
 			}
 
-			agan_mkobj_extent(obj, res->conf);
+			agan_mkobj_extent(obj, res->config);
 
 			result = aga_config_lookup(
-					res->conf, &version, 1, &ver, AGA_INTEGER, AGA_FALSE);
+					res->config, &version, 1, &ver, AGA_INTEGER, ASYS_FALSE);
 			if(result) ver = 1;
 
-			result = aga_resource_seek(res, &fp);
+			result = aga_resource_seek(res, &stream);
 			/* TODO: We can't return during list build! */
-			if(aga_script_err("aga_resource_stream", result)) return AGA_TRUE;
+			if(aga_script_err("aga_resource_stream", result)) return ASYS_TRUE;
 			len = res->size;
 
 			glBegin(GL_TRIANGLES);
 			/* if(aga_script_gl_err("glBegin")) return 0; */
 
 			for(i = 0; i < len; i += sizeof(vert)) {
-				result = aga_file_read(&vert, sizeof(vert), pack->fp);
-				if(aga_script_err("aga_file_read", result)) return AGA_TRUE;
+				result = asys_stream_read(
+						stream, 0, &vert, sizeof(struct aga_vertex));
+
+				if(aga_script_err("asys_stream_read", result)) {
+					return ASYS_TRUE;
+				}
 
 				/*
 				 * Models from v2.1.0 and below respected model vertex
 				 * Colouration.
 				 */
 				if(ver == 2) {
-					aga_uchar_t r = (obj->ind >> (2 * 8)) & 0xFF;
-					aga_uchar_t g = (obj->ind >> (1 * 8)) & 0xFF;
-					aga_uchar_t b = (obj->ind >> (0 * 8)) & 0xFF;
+					asys_uchar_t r = (obj->ind >> (2 * 8)) & 0xFF;
+					asys_uchar_t g = (obj->ind >> (1 * 8)) & 0xFF;
+					asys_uchar_t b = (obj->ind >> (0 * 8)) & 0xFF;
 					glColor3ub(r, g, b);
 				}
 				else {
 					AGA_DEPRECATED_IMPL(
 							"Loading Version 1 model data is deprecated");
+
 					glColor4fv(vert.col);
 				}
 
 				glTexCoord2fv(vert.uv);
-				/* if(aga_script_gl_err("glTexCoord2fv")) return AGA_TRUE; */
+				/* if(aga_script_gl_err("glTexCoord2fv")) return ASYS_TRUE; */
 				glNormal3fv(vert.norm);
-				/* if(aga_script_gl_err("glNormal3fv")) return AGA_TRUE; */
+				/* if(aga_script_gl_err("glNormal3fv")) return ASYS_TRUE; */
 				glVertex3fv(vert.pos);
-				/* if(aga_script_gl_err("glVertex3fv")) return AGA_TRUE; */
+				/* if(aga_script_gl_err("glVertex3fv")) return ASYS_TRUE; */
 			}
 
 			glEnd();
@@ -326,28 +341,28 @@ static aga_bool_t agan_mkobj_model(
 	glEndList();
 	if(aga_script_gl_err("glEndList")) return 0;
 
-	return AGA_FALSE;
+	return ASYS_FALSE;
 }
 
-static aga_bool_t agan_mkobj_light(
+static asys_bool_t agan_mkobj_light(
 		struct agan_object* obj, struct aga_config_node* conf) {
 
 	static const char* light = "Light";
 
-	enum aga_result result;
+	enum asys_result result;
 
 	struct aga_config_node* node = conf->children;
 	struct agan_lightdata* data;
 
 	aga_config_int_t scr;
-	aga_size_t i, j;
+	asys_size_t i, j;
 
 	double v;
 
-	if(aga_config_lookup_raw(node, &light, 1, &node)) return AGA_FALSE;
+	if(aga_config_lookup_raw(node, &light, 1, &node)) return ASYS_FALSE;
 
 	if(!(obj->light_data = calloc(1, sizeof(struct agan_lightdata)))) {
-		return AGA_TRUE;
+		return ASYS_TRUE;
 	}
 	data = obj->light_data;
 
@@ -361,15 +376,15 @@ static aga_bool_t agan_mkobj_light(
 			 * 		 In dev builds.
 			 */
 			if(index > 7 || index < 0) {
-				aga_log(
+				asys_log(
 						__FILE__, "warn: Light index `%u' out of range 0-7",
 						data->index);
 				free(data);
 				obj->light_data = 0;
-				return AGA_TRUE;
+				return ASYS_TRUE;
 			}
 
-			data->index = (aga_uchar_t) index;
+			data->index = (asys_uchar_t) index;
 		}
 		else if(aga_config_variable("Directional", child, AGA_INTEGER, &scr)) {
 			data->directional = !!scr;
@@ -380,77 +395,78 @@ static aga_bool_t agan_mkobj_light(
 		else if(aga_config_variable("Angle", child, AGA_FLOAT, &v)) {
 			data->angle = (float) v;
 		}
-		else if(aga_streql("Direction", child->name)) {
+		else if(asys_string_equal("Direction", child->name)) {
 			for(j = 0; j < 3; ++j) {
 				const char* comp = agan_xyz[j];
 				float (*dir)[3] = &data->direction;
 
 				result = aga_config_lookup(
-						child, &comp, 1, &v, AGA_FLOAT, AGA_FALSE);
+						child, &comp, 1, &v, AGA_FLOAT, ASYS_FALSE);
 				(*dir)[j] = result ? 0.0f : (float) v;
 			}
 		}
+
 		/* TODO: General API for getting multiple components from conf node. */
-		else if(aga_streql("Ambient", child->name)) {
+		else if(asys_string_equal("Ambient", child->name)) {
 			float (*col)[4] = &data->ambient;
 
 			for(j = 0; j < 3; ++j) {
 				const char* comp = agan_rgb[j];
 
 				result = aga_config_lookup(
-						child, &comp, 1, &v, AGA_FLOAT, AGA_FALSE);
+						child, &comp, 1, &v, AGA_FLOAT, ASYS_FALSE);
 				if(result) (*col)[j] = 1.0f;
 				else (*col)[j] = (float) v;
 			}
 
 			(*col)[3] = 1.0f;
 		}
-		else if(aga_streql("Diffuse", child->name)) {
+		else if(asys_string_equal("Diffuse", child->name)) {
 			float (*col)[4] = &data->diffuse;
 
 			for(j = 0; j < 3; ++j) {
 				const char* comp = agan_rgb[j];
 
 				result = aga_config_lookup(
-						child, &comp, 1, &v, AGA_FLOAT, AGA_FALSE);
+						child, &comp, 1, &v, AGA_FLOAT, ASYS_FALSE);
 				(*col)[j] = result ? 1.0f : (float) v;
 			}
 
 			(*col)[3] = 1.0f;
 		}
-		else if(aga_streql("Specular", child->name)) {
+		else if(asys_string_equal("Specular", child->name)) {
 			float (*col)[4] = &data->specular;
 
 			for(j = 0; j < 3; ++j) {
 				const char* comp = agan_rgb[j];
 
 				result = aga_config_lookup(
-						child, &comp, 1, &v, AGA_FLOAT, AGA_FALSE);
+						child, &comp, 1, &v, AGA_FLOAT, ASYS_FALSE);
 				(*col)[j] = result ? 1.0f : (float) v;
 			}
 
 			(*col)[3] = 1.0f;
 		}
-		else if(aga_streql("Attenuation", child->name)) {
+		else if(asys_string_equal("Attenuation", child->name)) {
 			static const char* attenuation[] = {
 					"Constant", "Linear", "Quadratic"
 			};
 
-			float* at[AGA_LEN(attenuation)];
+			float* at[ASYS_LENGTH(attenuation)];
 			at[0] = &data->constant_attenuation;
 			at[1] = &data->linear_attenuation;
 			at[2] = &data->quadratic_attenuation;
-			for(j = 0; j < AGA_LEN(at); ++j) {
+			for(j = 0; j < ASYS_LENGTH(at); ++j) {
 				const char* comp = attenuation[j];
 
 				result = aga_config_lookup(
-						child, &comp, 1, &v, AGA_FLOAT, AGA_FALSE);
+						child, &comp, 1, &v, AGA_FLOAT, ASYS_FALSE);
 				*at[j] = result ? 0.0f : (float) v;
 			}
 		}
 	}
 
-	/*aga_log(
+	/*asys_log(
 			__FILE__,
 			"\nambient: [ %f, %f, %f, %f ]\n"
 			"diffuse: [ %f, %f, %f, %f ]\n"
@@ -478,20 +494,20 @@ static aga_bool_t agan_mkobj_light(
 			(unsigned) data->index);
 	 */
 
-	return AGA_FALSE;
+	return ASYS_FALSE;
 }
 
 struct py_object* agan_mkobj(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	enum aga_result result;
+	enum asys_result result;
 
 	struct agan_object* obj;
 	struct py_int* v;
 	struct py_object* retval;
 	struct aga_config_node conf;
-	aga_bool_t c = AGA_FALSE;
-	aga_bool_t m = AGA_FALSE;
+
+	struct asys_stream* stream;
 
 	const char* path;
 	struct aga_resource_pack* pack = AGA_GET_USERDATA(env)->resource_pack;
@@ -500,7 +516,7 @@ struct py_object* agan_mkobj(
 	 * TODO: This is horrible (but only exists until we have an object registry
 	 * 		 To get small unique handle IDs for colour picking.
 	 */
-	static aga_uint_t objn = 0;
+	static asys_uint_t objn = 0;
 
 	(void) env;
 	(void) self;
@@ -511,7 +527,7 @@ struct py_object* agan_mkobj(
 		return aga_arg_error("mkobj", "string");
 	}
 
-	if(!(obj = aga_calloc(1, sizeof(struct agan_object)))) {
+	if(!(obj = asys_memory_allocate_zero(1, sizeof(struct agan_object)))) {
 		return py_error_set_nomem();
 	}
 
@@ -522,28 +538,20 @@ struct py_object* agan_mkobj(
 	obj->light_data = 0;
 	if(!(obj->transform = agan_mktrans(env, 0, 0))) goto cleanup;
 
-	{
-		void* fp;
+	path = py_string_get(args);
 
-		path = py_string_get(args);
+	result = aga_resource_pack_lookup(pack, path, &obj->res);
+	if(aga_script_err("aga_resource_pack_lookup", result)) goto cleanup;
 
-		result = aga_resource_pack_lookup(pack, path, &obj->res);
-		if(aga_script_err("aga_resource_pack_lookup", result)) goto cleanup;
+	result = aga_resource_seek(obj->res, &stream);
+	if(aga_script_err("aga_resource_seek", result)) goto cleanup;
 
-		result = aga_resource_seek(obj->res, &fp);
-		if(aga_script_err("aga_resource_seek", result)) goto cleanup;
-
-		result = aga_config_new(fp, obj->res->size, &conf);
-		if(aga_script_err("aga_resource_stream", result)) goto cleanup;
-
-		c = AGA_TRUE;
-	}
+	result = aga_config_new(stream, obj->res->size, &conf);
+	if(aga_script_err("aga_resource_stream", result)) goto cleanup;
 
 	if(agan_mkobj_trans(obj, &conf)) goto cleanup;
 	if(agan_mkobj_model(env, obj, &conf, pack, path)) goto cleanup;
 	if(agan_mkobj_light(obj, &conf)) goto cleanup;
-
-	m = AGA_TRUE;
 
 	result = aga_config_delete(&conf);
 	if(aga_script_err("aga_config_delete", result)) goto cleanup;
@@ -553,19 +561,15 @@ struct py_object* agan_mkobj(
 	return (struct py_object*) retval;
 
 	cleanup: {
-		if(c) {
-			aga_error_check_soft(
+		asys_log_result(
 					__FILE__, "aga_config_delete", aga_config_delete(&conf));
-		}
 
-		if(m) {
-			glDeleteLists(obj->drawlist, 1);
-			(void) aga_error_gl(__FILE__, "glDeleteLists");
-		}
+		glDeleteLists(obj->drawlist, 1);
+		(void) aga_error_gl(__FILE__, "glDeleteLists");
 
-		aga_free(obj->light_data);
+		asys_memory_free(obj->light_data);
 		py_object_decref(obj->transform);
-		aga_free(aga_script_pointer_get(v));
+		asys_memory_free(aga_script_pointer_get(v));
 		py_object_decref(retval);
 
 		return 0;
@@ -593,9 +597,8 @@ struct py_object* agan_killobj(
 
 	py_object_decref(obj->transform);
 
-	aga_free(obj->modelpath);
-
-	aga_free(obj);
+	asys_memory_free(obj->modelpath);
+	asys_memory_free(obj);
 
 	apro_stamp_end(APRO_SCRIPTGLUE_KILLOBJ);
 
@@ -622,7 +625,7 @@ struct py_object* agan_inobj(
 	float max[3];
 	double rotation[3];
 
-	aga_bool_t planar;
+	asys_bool_t planar;
 	unsigned i;
 	struct agan_object* obj;
 	double tolerance = AGA_TRANSFORM_TOLERANCE;
@@ -663,7 +666,7 @@ struct py_object* agan_inobj(
 	if(!(rot = py_dict_lookup(obj->transform, "rot"))) return 0;
 	if(!(scale = py_dict_lookup(obj->transform, "scale"))) return 0;
 
-	for(i = 0; i < AGA_LEN(min); ++i) {
+	for(i = 0; i < ASYS_LENGTH(min); ++i) {
 		float f;
 
 		/* TODO: Static "get N items into buffer" to make noverify easier. */
@@ -688,7 +691,7 @@ struct py_object* agan_inobj(
 		AGA_SWAP_FLOAT(max[0], max[2]);
 	}
 
-	for(i = 0; i < AGA_LEN(min); ++i) {
+	for(i = 0; i < ASYS_LENGTH(min); ++i) {
 		double f = py_float_get(py_list_get(pos, i));
 
 		min[i] += (float) (f - tolerance);
@@ -752,30 +755,25 @@ struct py_object* agan_inobj(
  * 		 The config tree but it would be wise to selectively hold it for a
  * 		 Load/save period.
  */
-enum aga_result agan_getobjconf(
+enum asys_result agan_getobjconf(
 		struct agan_object* obj, struct aga_config_node* node) {
 
-	void* fp;
-	enum aga_result result;
+	struct asys_stream* stream;
+	enum asys_result result;
 
-	result = aga_resource_seek(obj->res, &fp);
+	result = aga_resource_seek(obj->res, &stream);
 	if(aga_script_err("aga_resource_seek", result)) return 0;
 
-	/*
-	 * TODO: We can't currently set `aga_config_debug_file' to anything sensible
-	 * 		 Here as we don't cache object conf paths in the object
-	 * 		 (Rightfully so).
-	 */
-	result = aga_config_new(fp, obj->res->size, node);
+	result = aga_config_new(stream, obj->res->size, node);
 	if(aga_script_err("aga_config_new", result)) return 0;
 
-	return AGA_RESULT_OK;
+	return ASYS_RESULT_OK;
 }
 
 struct py_object* agan_objconf(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 
-	enum aga_result result;
+	enum asys_result result;
 
 	struct py_object* o;
 	struct py_object* l;
@@ -801,7 +799,7 @@ struct py_object* agan_objconf(
 	result = agan_getobjconf(obj, &conf);
 	if(aga_script_err("agan_getobjconf", result)) return 0;
 
-	retval = agan_scriptconf(&conf, AGA_TRUE, l);
+	retval = agan_scriptconf(&conf, ASYS_TRUE, l);
 
 	result = aga_config_delete(&conf);
 	if(aga_script_err("aga_config_delete", result)) return 0;
@@ -811,45 +809,45 @@ struct py_object* agan_objconf(
 	return retval ? retval : py_object_incref(PY_NONE);
 }
 
-static aga_bool_t agan_putobj_light(struct agan_lightdata* data) {
+static asys_bool_t agan_putobj_light(struct agan_lightdata* data) {
 	unsigned ind = GL_LIGHT0 + data->index;
 	float pos[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	pos[3] = data->directional ? 0.0f : 1.0f;
 
 	glEnable(ind);
-	if(aga_script_gl_err("glEnable")) return AGA_TRUE;
+	if(aga_script_gl_err("glEnable")) return ASYS_TRUE;
 
 	glLightfv(ind, GL_POSITION, pos);
-	if(aga_script_gl_err("glLightfv")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightfv")) return ASYS_TRUE;
 
 	glLightfv(ind, GL_AMBIENT, data->ambient);
-	if(aga_script_gl_err("glLightfv")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightfv")) return ASYS_TRUE;
 
 	glLightfv(ind, GL_DIFFUSE, data->diffuse);
-	if(aga_script_gl_err("glLightfv")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightfv")) return ASYS_TRUE;
 
 	glLightfv(ind, GL_SPECULAR, data->specular);
-	if(aga_script_gl_err("glLightfv")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightfv")) return ASYS_TRUE;
 
 	glLightf(ind, GL_CONSTANT_ATTENUATION, data->constant_attenuation);
-	if(aga_script_gl_err("glLightf")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightf")) return ASYS_TRUE;
 
 	glLightf(ind, GL_LINEAR_ATTENUATION, data->linear_attenuation);
-	if(aga_script_gl_err("glLightf")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightf")) return ASYS_TRUE;
 
 	glLightf(ind, GL_QUADRATIC_ATTENUATION, data->quadratic_attenuation);
-	if(aga_script_gl_err("glLightf")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightf")) return ASYS_TRUE;
 
 	glLightf(ind, GL_SPOT_EXPONENT, data->exponent);
-	if(aga_script_gl_err("glLightf")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightf")) return ASYS_TRUE;
 
 	glLightf(ind, GL_SPOT_CUTOFF, data->angle);
-	if(aga_script_gl_err("glLightf")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightf")) return ASYS_TRUE;
 
 	glLightfv(ind, GL_SPOT_DIRECTION, data->direction);
-	if(aga_script_gl_err("glLightfv")) return AGA_TRUE;
+	if(aga_script_gl_err("glLightfv")) return ASYS_TRUE;
 
-	return AGA_FALSE;
+	return ASYS_FALSE;
 }
 
 struct py_object* agan_putobj(
@@ -874,7 +872,7 @@ struct py_object* agan_putobj(
 	if(aga_script_gl_err("glMatrixMode")) return 0;
 	glPushMatrix();
 	if(aga_script_gl_err("glPushMatrix")) return 0;
-	if(agan_settransmat(obj->transform, AGA_FALSE)) return 0;
+	if(agan_settransmat(obj->transform, ASYS_FALSE)) return 0;
 
 	apro_stamp_end(APRO_PUTOBJ_RISING);
 
