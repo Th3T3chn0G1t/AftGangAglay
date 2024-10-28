@@ -13,6 +13,10 @@
  * 		 NT3.5 had GL support so we may need to look at that.
  */
 
+/*
+ * TODO: Restructure `src/' tree to use `sys/' paths for x vs. win32 the same
+ * 		 As `include/'.
+ */
 
 #define AGA_WANT_WINDOWS_H
 
@@ -73,7 +77,7 @@ static LRESULT CALLBACK aga_winproc(
 		/* TODO: We might be able to get out of this. */
 		if(GetLastError()) {
 			aga_win32_error(__FILE__, "GetWindowLongPtr");
-			aga_error_abort();
+			asys_abort();
 		}
 
 		goto default_msg;

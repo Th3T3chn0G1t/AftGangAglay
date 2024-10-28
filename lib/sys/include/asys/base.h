@@ -18,7 +18,7 @@
 
 /* TODO: This assumes all *nix-y systems define these -- is this true? */
 #if defined(unix) || defined(__unix) || defined(__unix__)
-/*# define ASYS_UNIX*/
+# define ASYS_UNIX
 #endif
 
 #ifdef __STDC__

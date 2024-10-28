@@ -9,12 +9,14 @@
 #include <asys/base.h>
 #include <asys/result.h>
 
-ASYS_NORETURN void aga_error_abort(void);
+ASYS_NORETURN void asys_abort(void);
 
-ASYS_NORETURN void asys_error_fatal(
+ASYS_NORETURN void asys_result_fatal(
 		const char*, const char*, enum asys_result);
 
 void asys_result_check(const char*, const char*, enum asys_result);
+void asys_result_check_path(
+		const char*, const char*, const char*, enum asys_result);
 
 /*
  * NOTE: `GetLastError' did not exist in 1992 so there are no pure-Windows

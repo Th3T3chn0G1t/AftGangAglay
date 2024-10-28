@@ -24,7 +24,7 @@ if(res) (void) aga_shell_open(report_uri);
 exit(EXIT_FAILURE);
  */
 
-ASYS_NORETURN void aga_error_abort(void) {
+ASYS_NORETURN void asys_abort(void) {
 #ifdef ASYS_STDC
 # ifdef NDEBUG
 	exit(EXIT_FAILURE);
@@ -36,11 +36,11 @@ ASYS_NORETURN void aga_error_abort(void) {
 #endif
 }
 
-void asys_error_fatal(
+void asys_result_fatal(
 		const char* file, const char* function, enum asys_result result) {
 
 	asys_log_result(file, function, result);
-	aga_error_abort();
+	asys_abort();
 }
 
 void asys_result_check(
@@ -48,7 +48,17 @@ void asys_result_check(
 
 	if(!result) return;
 
-	asys_error_fatal(file, function, result);
+	asys_result_fatal(file, function, result);
+}
+
+void asys_result_check_path(
+		const char* file, const char* function, const char* path,
+		enum asys_result result) {
+
+	if(!result) return;
+
+	asys_log_result_path(file, function, path, result);
+	asys_abort();
 }
 
 #ifdef ASYS_STDC

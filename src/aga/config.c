@@ -271,7 +271,7 @@ static void aga_sgml_put_entity(HTStructured* me, int n) {
 }
 
 void HTOOM(const char* file, const char* func) {
-	asys_error_fatal(file, func, ASYS_RESULT_OOM);
+	asys_result_fatal(file, func, ASYS_RESULT_OOM);
 }
 
 static HTStructuredClass aga_global_sgml_class = {

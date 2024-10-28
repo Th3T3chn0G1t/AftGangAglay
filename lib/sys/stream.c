@@ -8,6 +8,10 @@
 #include <asys/error.h>
 #include <asys/string.h>
 
+#ifdef ASYS_UNIX
+# include <asys/sys/unix/filedetail.h>
+#endif
+
 enum asys_result asys_stream_new(
 		struct asys_stream* stream, const char* path) {
 
@@ -236,48 +240,6 @@ enum asys_result asys_stream_read(
 	return ASYS_RESULT_NOT_IMPLEMENTED;
 #endif
 }
-
-#ifdef ASYS_UNIX
-static enum asys_result asys_file_attribute_stat(
-		struct stat* buffer, enum asys_file_attribute_type type,
-		union asys_file_attribute* attribute) {
-
-	switch(type) {
-		default: return ASYS_RESULT_BAD_PARAM;
-
-		case ASYS_FILE_MODIFIED: {
-			attribute->modified = buffer->st_mtime;
-			break;
-		}
-
-		case ASYS_FILE_LENGTH: {
-			attribute->length = buffer->st_size;
-			break;
-		}
-
-		case ASYS_FILE_TYPE: {
-#if !defined(S_ISDIR)
-# ifdef S_IFDIR
-#  define ASYS_ISDIR(mode) (!!(mode & S_IFDIR))
-# else
-#  define ASYS_ISDIR(mode) (ASYS_FALSE)
-# endif
-#else
-# define ASYS_ISDIR S_ISDIR
-#endif
-
-			if(ASYS_ISDIR(buffer->st_mode)) {
-				attribute->type = ASYS_FILE_DIRECTORY;
-			}
-			else attribute->type = ASYS_FILE_REGULAR;
-
-			break;
-		}
-	}
-
-	return ASYS_RESULT_OK;
-}
-#endif
 
 /* TODO: File kind of a stream is always `FILE'. */
 enum asys_result asys_stream_attribute(

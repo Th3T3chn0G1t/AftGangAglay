@@ -9,6 +9,10 @@
 #include <asys/stream.h>
 #include <asys/log.h>
 
+#ifdef ASYS_UNIX
+# include "sys/unix/detail.h"
+#endif
+
 /*
  * TODO: Old stdc-y stat emulation -- reuse me.
 static enum asys_result asys_file_attribute_type(

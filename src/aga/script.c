@@ -98,7 +98,7 @@ static enum asys_result aga_script_compile(
 	if(!(module = py_module_add(env, "__main__"))) return ASYS_RESULT_ERROR;
 
 	py_result = py_parse_file(
-				stream->fp, script, &py_grammar, PY_GRAMMAR_FILE_INPUT, 0, 0,
+				stream, script, &py_grammar, PY_GRAMMAR_FILE_INPUT, 0, 0,
 				&node);
 
 	if(py_result != PY_RESULT_DONE) return aga_pyresult(py_result);
