@@ -11,7 +11,6 @@
 #include <aga/draw.h>
 #include <aga/script.h>
 #include <aga/pack.h>
-#include <aga/io.h>
 #include <aga/diagnostic.h>
 
 #include <apro.h>

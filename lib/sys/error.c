@@ -43,7 +43,7 @@ void asys_error_fatal(
 	aga_error_abort();
 }
 
-void asys_error_check(
+void asys_result_check(
 		const char* file, const char* function, enum asys_result result) {
 
 	if(!result) return;
@@ -52,11 +52,11 @@ void asys_error_check(
 }
 
 #ifdef ASYS_STDC
-enum asys_result asys_error_errno(const char* file, const char* function) {
-	return asys_error_errno_path(file, function, 0);
+enum asys_result asys_result_errno(const char* file, const char* function) {
+	return asys_result_errno_path(file, function, 0);
 }
 
-enum asys_result asys_error_errno_path(
+enum asys_result asys_result_errno_path(
 		const char* file, const char* function, const char* path) {
 
 	if(file) {

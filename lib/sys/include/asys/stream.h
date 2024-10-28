@@ -30,8 +30,13 @@ enum asys_stream_whence {
 enum asys_result asys_stream_new(struct asys_stream*, const char*);
 enum asys_result asys_stream_delete(struct asys_stream*);
 
+/* TODO: This shouldn't be necessary once we have all dependencies on-board. */
+asys_stream_native_t asys_stream_native(struct asys_stream*);
+
 enum asys_result asys_stream_seek(
 		struct asys_stream*, enum asys_stream_whence, asys_offset_t);
+
+enum asys_result asys_stream_tell(struct asys_stream*, asys_offset_t*);
 
 enum asys_result asys_stream_read(
 		struct asys_stream*, asys_size_t*, void*, asys_size_t);
@@ -41,11 +46,18 @@ enum asys_result asys_stream_attribute(
 		union asys_file_attribute*);
 
 /* NOTE: No stream-writing IO functions are available outside of dev builds. */
+enum asys_result asys_stream_new_write(struct asys_stream*, const char*);
+
 enum asys_result asys_stream_write(
 		struct asys_stream*, const void*, asys_size_t);
 
 enum asys_result asys_stream_write_format(
 		struct asys_stream*, const char*, ...);
+
+#ifdef ASYS_VARARGS_H
+enum asys_result asys_stream_write_format_variadic(
+		struct asys_stream*, const char*, va_list);
+#endif
 
 enum asys_result asys_stream_write_characters(
 		struct asys_stream*, char, asys_size_t);

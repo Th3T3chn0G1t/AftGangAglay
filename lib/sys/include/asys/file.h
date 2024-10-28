@@ -10,6 +10,8 @@
 #include <asys/result.h>
 #include <asys/filedata.h>
 
+typedef enum asys_result (*aga_directory_callback_t)(const char*, void*);
+
 /* NOTE: No path-wise IO functions are available outside of dev builds. */
 
 enum asys_result asys_path_attribute(
@@ -18,5 +20,9 @@ enum asys_result asys_path_attribute(
 
 enum asys_result asys_path_tail(const char*, void*, asys_size_t);
 enum asys_result asys_path_remove(const char*);
+
+enum asys_result asys_path_iterate(
+		const char*, aga_directory_callback_t, asys_bool_t, void*,
+		asys_bool_t);
 
 #endif

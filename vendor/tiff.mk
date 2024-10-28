@@ -31,6 +31,7 @@ $(TIF_OUT): $(TIF_OBJ)
 # TODO: This doesn't seem to be working?
 $(TIFS)platform$(OBJ): $(TIFS)win3.c
 $(TIFS)platform$(OBJ): $(TIFS)unix.c
+$(TIFS)platform$(OBJ): $(TIFS)stdc.c
 
 clean_tiff:
 	$(RM) $(TIF_OBJ) $(TIF_OUT)

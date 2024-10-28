@@ -18,7 +18,6 @@
 
 /* TODO: This assumes all *nix-y systems define these -- is this true? */
 #if defined(unix) || defined(__unix) || defined(__unix__)
-/* TODO: Temporarily disabled. */
 /*# define ASYS_UNIX*/
 #endif
 

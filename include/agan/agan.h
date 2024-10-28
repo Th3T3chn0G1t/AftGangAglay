@@ -7,6 +7,7 @@
 #define AGAN_H
 
 #include <asys/result.h>
+
 #include <aga/python.h>
 
 #define AGA_GET_USERDATA(env) ((struct aga_script_userdata*) env->py->user)

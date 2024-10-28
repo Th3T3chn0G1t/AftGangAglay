@@ -7,6 +7,7 @@
 #define AGA_STARTUP_H
 
 #include <aga/config.h>
+
 #include <asys/result.h>
 
 struct aga_resource_pack;

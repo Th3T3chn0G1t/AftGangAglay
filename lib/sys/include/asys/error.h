@@ -14,7 +14,7 @@ ASYS_NORETURN void aga_error_abort(void);
 ASYS_NORETURN void asys_error_fatal(
 		const char*, const char*, enum asys_result);
 
-void asys_error_check(const char*, const char*, enum asys_result);
+void asys_result_check(const char*, const char*, enum asys_result);
 
 /*
  * NOTE: `GetLastError' did not exist in 1992 so there are no pure-Windows
@@ -24,8 +24,8 @@ void asys_error_check(const char*, const char*, enum asys_result);
 
 /* NOTE: Pass null to `file' to suppress error message printout. */
 #ifdef ASYS_STDC
-enum asys_result asys_error_errno(const char*, const char*);
-enum asys_result asys_error_errno_path(const char*, const char*, const char*);
+enum asys_result asys_result_errno(const char*, const char*);
+enum asys_result asys_result_errno_path(const char*, const char*, const char*);
 #endif
 
 #endif

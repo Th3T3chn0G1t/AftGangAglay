@@ -3,34 +3,31 @@
  * Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
+#include <asys/varargs.h>
+
 #include <aga/build.h>
 #include <aga/startup.h>
-#include <asys/log.h>
 #include <aga/pack.h>
-#include <aga/config.h>
-#include <aga/io.h>
+
+#include <asys/log.h>
+#include <asys/stream.h>
+#include <asys/file.h>
+#include <asys/memory.h>
+#include <asys/string.h>
 
 /* TODO: For `struct vertex' definition -- move elsewhere. */
 #include <agan/object.h>
 
-#define AGA_RAWPATH (".raw")
-#define AGA_PY_END ("\n\xFF")
+#define AGA_RAW_SUFFIX (".raw")
+
+#define AGA_PY_TAIL ("\n\xFF")
+
 /* TODO: Pass this through properly to `aga_build_X'. */
 #define AGA_BUILD_FNAME ("<build>")
 
 #ifdef AGA_DEVBUILD
-
-#ifdef _MSC_VER
-# pragma warning(push)
-# pragma warning(disable: 4668) /* Symbol not defined as macro. */
-#endif
-
-#include <glm.h>
-#include <tiffio.h>
-
-#ifdef _MSC_VER
-# pragma warning(pop)
-#endif
+# include <glm.h>
+# include <tiffio.h>
 
 enum aga_file_kind {
 	AGA_KIND_NONE = 0,
@@ -44,6 +41,15 @@ enum aga_file_kind {
 	AGA_KIND_WAV,
 	AGA_KIND_MIDI
 };
+
+struct aga_build_conf_pass {
+	struct asys_stream* stream;
+	enum aga_file_kind kind;
+	asys_size_t offset;
+};
+
+typedef enum asys_result (*aga_build_input_fn_t)(
+		struct asys_stream*, struct asys_stream*);
 
 typedef enum asys_result (*aga_input_iterfn_t)(
 		const char*, enum aga_file_kind, asys_bool_t, void*);
@@ -82,7 +88,8 @@ static enum asys_result aga_build_open_config(
 }
 
 static enum asys_result aga_build_open_output(
-		struct aga_config_node* root, void** fp, const char** out_path) {
+		struct aga_config_node* root, struct asys_stream* stream,
+		const char** out_path) {
 
 	static const char* output = "Output";
 
@@ -91,6 +98,7 @@ static enum asys_result aga_build_open_output(
 
 	result = aga_config_lookup(
 			root->children, &output, 1, &path, AGA_STRING, ASYS_FALSE);
+
 	if(result) {
 		asys_log(
 				__FILE__,
@@ -103,67 +111,45 @@ static enum asys_result aga_build_open_output(
 
 	asys_log(__FILE__, "Writing output file `%s'...", path);
 
-	if(!(*fp = fopen(path, "wb"))) {
-		return aga_error_system_path(__FILE__, "fopen", path);
-	}
+	result = asys_stream_new_write(stream, path);
+	if(result) return result;
 
 	return ASYS_RESULT_OK;
 }
 
 static enum asys_result aga_fprintf_add(
-		void* fp, asys_size_t indent, const char* format, ...) {
+		struct asys_stream* stream, asys_size_t indent,
+		const char* format, ...) {
 
-	int written;
-	asys_size_t i;
+	enum asys_result result;
+
 	va_list list;
+
+	result = asys_stream_write_characters(stream, '\t', indent);
+	if(result) return result;
 
 	va_start(list, format);
 
-	for(i = 0; i < indent; ++i) {
-		if(fputc('\t', fp) == EOF) {
-			va_end(list);
-			return aga_error_system(__FILE__, "fputc");
-		}
-	}
-
-	if((written = vfprintf(fp, format, list)) < 0) {
-		va_end(list);
-		return aga_error_system(__FILE__, "vfprintf");
-	}
+	result = asys_stream_write_format_variadic(stream, format, list);
 
 	va_end(list);
-	return ASYS_RESULT_OK;
+
+	return result;
 }
 
-/*
-static enum asys_result aga_build_input_file(
-		void* fp, const char* path, enum aga_file_kind kind) {
+static enum asys_result aga_build_python(
+		struct asys_stream* out, struct asys_stream* in) {
 
 	enum asys_result result;
 
-	result = aga_fprintf_add(fp, &conf_size, "\t<item name=\"%s\">");
-	if(result) return result;
+	if((result = asys_stream_splice(out, in, ASYS_COPY_ALL))) return result;
 
-	return ASYS_RESULT_OK;
-}
- */
-
-static enum asys_result aga_build_python(void* out, void* in) {
-	enum asys_result result;
-
-	size_t written;
-
-	if((result = aga_file_copy(out, in, AGA_COPY_ALL))) return result;
-
-	written = fwrite(AGA_PY_END, 1, sizeof(AGA_PY_END) - 1, out);
-	if(written < sizeof(AGA_PY_END) - 1) {
-		return aga_error_system(__FILE__, "fwrite");
-	}
-
-	return ASYS_RESULT_OK;
+	return asys_stream_write(out, AGA_PY_TAIL, sizeof(AGA_PY_TAIL) - 1);
 }
 
-static enum asys_result aga_build_obj(void* out, void* in) {
+static enum asys_result aga_build_obj(
+		struct asys_stream* out, struct asys_stream* in) {
+
 	enum asys_result result = ASYS_RESULT_OK;
 
 	GLMmodel* model;
@@ -172,10 +158,8 @@ static enum asys_result aga_build_obj(void* out, void* in) {
 	unsigned i, j;
 	GLMgroup* group;
 
-	if(!(model = glmReadOBJFile(AGA_BUILD_FNAME, in))) {
-		/* TODO: Handle different EH. */
-		return ASYS_RESULT_OOM;
-	}
+	/* TODO: Handle different EH. */
+	if(!(model = glmReadOBJFile(AGA_BUILD_FNAME, in))) return ASYS_RESULT_OOM;
 
 	/* TODO: Put this epsilon somewhere configurable. */
 	/* TODO: This hangs? (Or takes a *really* long time on sponza or smth.) */
@@ -194,66 +178,55 @@ static enum asys_result aga_build_obj(void* out, void* in) {
 			const GLMtriangle* t = &tris[group->tris[i]];
 			const GLMmaterial* mat = &mats[group->material];
 
-			struct aga_vertex v;
+			struct aga_vertex v = { 0 };
 
-			if(mat) aga_memcpy(v.col, mat->diffuse, sizeof(v.col));
-			else aga_memset(v.col, 0, sizeof(v.col));
+			if(mat) asys_memory_copy(v.col, mat->diffuse, sizeof(float[4]));
 
 			for(j = 0; j < 3; ++j) {
-				aga_memcpy(v.norm, &norms[3 * t->n_inds[j]], sizeof(v.norm));
-				aga_memcpy(v.uv, &uvs[2 * t->t_inds[j]], sizeof(v.uv));
-				aga_memcpy(v.pos, &verts[3 * t->v_inds[j]], sizeof(v.pos));
+				asys_memory_copy(
+						v.uv, &uvs[2 * t->t_inds[j]], sizeof(float[2]));
 
-				if(fwrite(&v, sizeof(v), 1, out) < 1) {
-					if(ferror(out)) {
-						return aga_error_system(__FILE__, "fwrite");
-					}
+				asys_memory_copy(
+						v.norm, &norms[3 * t->n_inds[j]], sizeof(float[3]));
 
-					return ASYS_RESULT_EOF;
-				}
+				asys_memory_copy(
+						v.pos, &verts[3 * t->v_inds[j]], sizeof(float[3]));
+
+				result = asys_stream_write(out, &v, sizeof(struct aga_vertex));
+				if(result) goto cleanup;
 			}
 		}
 
 		group = group->next;
 	}
 
-	if(fwrite(extent, sizeof(float), ASYS_LENGTH(extent), out) < ASYS_LENGTH(extent)) {
-		if(ferror(out)) {
-			result = aga_error_system(__FILE__, "fwrite");
-			goto cleanup;
-		}
+	result = asys_stream_write(out, &extent, sizeof(float[6]));
 
-		result = ASYS_RESULT_EOF;
-		goto cleanup;
-	}
-
-	cleanup: {
-		glmDelete(model);
-	}
+	cleanup: glmDelete(model);
 
 	return result;
 
 }
 
-static enum asys_result aga_build_tiff(void* out, void* in) {
+static enum asys_result aga_build_tiff(
+		struct asys_stream* out, struct asys_stream* in) {
+
 	/* NOTE: TIFF wants this -- this is kind of evil. */
 	static char msg[1024];
 
 	enum asys_result result = ASYS_RESULT_OK;
 
-	int fd;
+	asys_stream_native_t native = asys_stream_native(in);
 
 	TIFF* tiff;
 	TIFFRGBAImage img = { 0 };
 
-	asys_size_t size, count;
+	asys_size_t size;
 	void* raster = 0;
 
-	asys_uint_t width;
-
-	if((fd = fileno(in)) == -1) return aga_error_system(__FILE__, "fileno");
-
-	if(!(tiff = TIFFFdOpen(fd, AGA_BUILD_FNAME, "r"))) return ASYS_RESULT_ERROR;
+	if(!(tiff = TIFFFdOpen(native, AGA_BUILD_FNAME, "r"))) {
+		return ASYS_RESULT_ERROR;
+	}
 
 	if(!TIFFRGBAImageBegin(&img, tiff, 0, msg)) {
 		asys_log(__FILE__, "err: Failed to read TIFF file: %s", msg);
@@ -261,10 +234,10 @@ static enum asys_result aga_build_tiff(void* out, void* in) {
 		goto cleanup;
 	}
 
-	count = img.width * img.height;
-	size = 4 * count;
-	if(!(raster = aga_malloc(size))) {
-		result = aga_error_system(__FILE__, "aga_malloc");
+	size = 4 * img.width * img.height;
+
+	if(!(raster = asys_memory_allocate(size))) {
+		result = ASYS_RESULT_OOM;
 		goto cleanup;
 	}
 
@@ -273,26 +246,11 @@ static enum asys_result aga_build_tiff(void* out, void* in) {
 		goto cleanup;
 	}
 
-	if(fwrite(raster, 4, count, out) < count) {
-		if(ferror(out)) {
-			result = aga_error_system(__FILE__, "fwrite");
-			goto cleanup;
-		}
+	result = asys_stream_write(out, raster, size);
+	if(result) goto cleanup;
 
-		result = ASYS_RESULT_EOF;
-		goto cleanup;
-	}
-
-	width = img.width;
-	if(fwrite(&width, sizeof(width), 1, out) < 1) {
-		if(ferror(out)) {
-			result = aga_error_system(__FILE__, "fwrite");
-			goto cleanup;
-		}
-
-		result = ASYS_RESULT_EOF;
-		goto cleanup;
-	}
+	result = asys_stream_write(out, &img.width, sizeof(uint32));
+	if(result) goto cleanup;
 
 	cleanup: {
 		asys_memory_free(raster);
@@ -331,12 +289,12 @@ static asys_bool_t aga_build_path_matches_kind(
 static enum asys_result aga_build_input_file(
 		const char* path, enum aga_file_kind kind) {
 
-	static asys_fixed_buffer_t outpath = { 0 };
+	static asys_fixed_buffer_t buffer = { 0 };
 
-	enum asys_result result = ASYS_RESULT_OK;
+	enum asys_result result;
 
-	void* in;
-	void* out;
+	aga_build_input_fn_t fn;
+	struct asys_stream in, out;
 
 	/*
 	 * Input kinds which are handled as "raw" need a special case when
@@ -348,30 +306,29 @@ static enum asys_result aga_build_input_file(
 	/* Skip input files which don't match kind. */
 	if(!aga_build_path_matches_kind(path, kind)) return ASYS_RESULT_OK;
 
-	strcpy(outpath, path);
-	strcat(outpath, AGA_RAWPATH);
+	buffer[0] = 0;
 
-	if(!(in = fopen(path, "rb"))) {
-		return aga_error_system_path(__FILE__, "fopen", path);
-	}
+	asys_string_concatenate(buffer, path);
+	asys_string_concatenate(buffer, AGA_RAW_SUFFIX);
 
-	if(!(out = fopen(outpath, "wb"))) {
-		return aga_error_system_path(__FILE__, "fopen", path);
-	}
+	result = asys_stream_new(&in, path);
+	if(result) return result;
 
-	/* TODO: Leaky error states. */
+	result = asys_stream_new_write(&out, path);
+	if(result) goto cleanup;
+
 	switch(kind) {
 		default: {
 			asys_log(
 					__FILE__,
 					"err: Unknown or unimplemented input kind for `%s'", path);
-			break;
+
+			goto cleanup;
 		}
 
-		case AGA_KIND_PY: result = aga_build_python(out, in); break;
-
-		case AGA_KIND_OBJ: result = aga_build_obj(out, in); break;
-		case AGA_KIND_TIFF: result = aga_build_tiff(out, in); break;
+		case AGA_KIND_PY: fn = aga_build_python; break;
+		case AGA_KIND_OBJ: fn = aga_build_obj; break;
+		case AGA_KIND_TIFF: fn = aga_build_tiff; break;
 
 /*
 		case AGA_KIND_WAV: break;
@@ -379,13 +336,23 @@ static enum asys_result aga_build_input_file(
  */
 	}
 
-	if(result) return result;
+	result = fn(&out, &in);
+	if(result) goto cleanup;
 
-	if(fclose(in) == EOF) return aga_error_system(__FILE__, "fclose");
+	result = asys_stream_delete(&in);
+	if(result) goto cleanup;
 
-	if(fclose(out) == EOF) return aga_error_system(__FILE__, "fclose");
+	return asys_stream_delete(&out);
 
-	return ASYS_RESULT_OK;
+	cleanup: {
+		asys_log_result(
+				__FILE__, "asys_stream_delete", asys_stream_delete(&in));
+
+		asys_log_result(
+				__FILE__, "asys_stream_delete", asys_stream_delete(&out));
+
+		return result;
+	}
 }
 
 static enum asys_result aga_build_input_dir(const char* path, void* pass) {
@@ -399,62 +366,59 @@ static enum asys_result aga_build_input(
 		void* pass) {
 
 	enum asys_result result;
-	union aga_file_attribute attr;
+	union asys_file_attribute attribute;
 
 	(void) pass;
 
-	if((result = aga_file_attribute_path(path, AGA_FILE_TYPE, &attr))) {
-		return result;
-	}
+	result = asys_path_attribute(path, ASYS_FILE_TYPE, &attribute);
+	if(result) return result;
 
-	if(attr.type == AGA_FILE_DIRECTORY) {
-		return aga_directory_iterate(
+	if(attribute.type == ASYS_FILE_DIRECTORY) {
+		return asys_path_iterate(
 				path, aga_build_input_dir, recurse, &kind, ASYS_TRUE);
 	}
 	else return aga_build_input_file(path, kind);
 }
 
-struct aga_build_conf_pass {
-	void* fp;
-	enum aga_file_kind kind;
-	asys_size_t offset;
-};
-
 static enum asys_result aga_build_conf_file(
-		const char* path, enum aga_file_kind kind, void* fp,
+		const char* path, enum aga_file_kind kind, struct asys_stream* stream,
 		asys_size_t* offset) {
 
-	asys_fixed_buffer_t outpath = { 0 };
+	static asys_fixed_buffer_t buffer = { 0 };
 
 	enum asys_result result;
 
-	union aga_file_attribute attr;
+	union asys_file_attribute attr;
 
 	/* Skip input files which don't match kind. */
 	if(!aga_build_path_matches_kind(path, kind)) return ASYS_RESULT_OK;
 
-	strcpy(outpath, path);
+	buffer[0] = 0;
+
+	asys_string_concatenate(buffer, path);
 
 	/* Use the base file as the input for SGML/RAW inputs. */
 	if(kind != AGA_KIND_SGML && kind != AGA_KIND_RAW) {
-		strcat(outpath, AGA_RAWPATH);
+		asys_string_concatenate(buffer, AGA_RAW_SUFFIX);
 	}
 
-	result = aga_fprintf_add(fp, 1, "<item name=\"%s\">\n", outpath); \
-    if (result) return result;
+	result = aga_fprintf_add(stream, 1, "<item name=\"%s\">\n", buffer);
+    if(result) return result;
 
 	/* Unpleasant but neccesary. */
-#define agab_(indent, name, type, fmt, parameter) \
+#define agab_(indent, name, type, format, parameter) \
         do { \
             result = aga_fprintf_add( \
-                    fp, indent, \
+                    stream, indent, \
                     "<item name=\"%s\" type=\"%s\">\n", name, type); \
             if(result) return result; \
             \
-            result = aga_fprintf_add(fp, indent + 1, fmt "\n", parameter); \
+            result = aga_fprintf_add( \
+					stream, indent + 1, format "\n", parameter); \
             if(result) return result; \
             \
-            result = aga_fprintf_add(fp, indent, "</item>\n"); \
+            result = aga_fprintf_add( \
+					stream, indent, "</item>\n"); \
             if(result) return result; \
 		} while(0)
 	{
@@ -465,7 +429,7 @@ static enum asys_result aga_build_conf_file(
 		 */
 		agab_(2, "Offset", "Integer", "%zu", *offset);
 
-		result = aga_file_attribute_path(outpath, AGA_FILE_LENGTH, &attr);
+		result = asys_path_attribute(buffer, ASYS_FILE_LENGTH, &attr);
 		if(result) return result;
 
 		*offset += attr.length;
@@ -481,7 +445,7 @@ static enum asys_result aga_build_conf_file(
 			case AGA_KIND_TIFF: {
 				asys_uint_t width;
 
-				result = aga_path_tail(outpath, sizeof(width), &width);
+				result = asys_path_tail(buffer, &width, sizeof(asys_uint_t));
 				if(result) return result;
 
 				*offset -= sizeof(width);
@@ -493,7 +457,7 @@ static enum asys_result aga_build_conf_file(
 			case AGA_KIND_OBJ: {
 				float extents[6];
 
-				result = aga_path_tail(outpath, sizeof(extents), extents);
+				result = asys_path_tail(buffer, extents, sizeof(float[6]));
 				if(result) return result;
 
 				*offset -= sizeof(extents);
@@ -516,7 +480,7 @@ static enum asys_result aga_build_conf_file(
 	}
 #undef agab_
 
-	result = aga_fprintf_add(fp, 1, "</item>\n"); \
+	result = aga_fprintf_add(stream, 1, "</item>\n"); \
 	if(result) return result;
 
 	return ASYS_RESULT_OK;
@@ -526,7 +490,7 @@ static enum asys_result aga_build_conf_dir(const char* path, void* pass) {
 	struct aga_build_conf_pass* conf_pass = pass;
 
 	return aga_build_conf_file(
-			path, conf_pass->kind, conf_pass->fp, &conf_pass->offset);
+			path, conf_pass->kind, conf_pass->stream, &conf_pass->offset);
 }
 
 static enum asys_result aga_build_conf(
@@ -534,75 +498,79 @@ static enum asys_result aga_build_conf(
 		void* pass) {
 
 	enum asys_result result;
-	union aga_file_attribute attr;
+	union asys_file_attribute attr;
 
 	struct aga_build_conf_pass* conf_pass = pass;
 
-	if((result = aga_file_attribute_path(path, AGA_FILE_TYPE, &attr))) {
+	if((result = asys_path_attribute(path, ASYS_FILE_TYPE, &attr))) {
 		return result;
 	}
 
-	if(attr.type == AGA_FILE_DIRECTORY) {
+	if(attr.type == ASYS_FILE_DIRECTORY) {
 		conf_pass->kind = kind;
 
-		return aga_directory_iterate(
+		return asys_path_iterate(
 				path, aga_build_conf_dir, recurse, conf_pass, ASYS_TRUE);
 	}
 	else {
 		return aga_build_conf_file(
-			path, kind, conf_pass->fp, &conf_pass->offset);
+			path, kind, conf_pass->stream, &conf_pass->offset);
 	}
 }
 
 static enum asys_result aga_build_pack_file(
-		const char* path, enum aga_file_kind kind, void* fp) {
+		const char* path, enum aga_file_kind kind,
+		struct asys_stream* stream) {
 
-	asys_fixed_buffer_t outpath = { 0 };
+	static asys_fixed_buffer_t buffer = { 0 };
 
 	enum asys_result result;
 
-	union aga_file_attribute attr;
+	union asys_file_attribute attribute;
 
-	void* in;
-	asys_size_t size;
+	struct asys_stream in;
+	asys_size_t count;
 
 	/* Skip input files which don't match kind. */
 	if(!aga_build_path_matches_kind(path, kind)) return ASYS_RESULT_OK;
 
-	strcpy(outpath, path);
+	buffer[0] = 0;
+
+	asys_string_concatenate(buffer, path);
 
 	/* Use the base file as the input for SGML/RAW inputs. */
 	if(kind != AGA_KIND_SGML && kind != AGA_KIND_RAW) {
-		strcat(outpath, AGA_RAWPATH);
+		asys_string_concatenate(buffer, AGA_RAW_SUFFIX);
 	}
 
-	if((result = aga_file_attribute_path(outpath, AGA_FILE_LENGTH, &attr))) {
+	if((result = asys_path_attribute(buffer, ASYS_FILE_LENGTH, &attribute))) {
 		return result;
 	}
 
-	size = attr.length;
+	count = attribute.length;
 
 	switch(kind) {
 		default: break;
 
 		/* TODO: Structurize file tails. */
-		case AGA_KIND_TIFF: size -= sizeof(asys_uint_t); break;
-		case AGA_KIND_OBJ: size -= sizeof(float[6]); break;
+		case AGA_KIND_TIFF: count -= sizeof(asys_uint_t); break;
+		case AGA_KIND_OBJ: count -= sizeof(float[6]); break;
 	}
 
-	if(!(in = fopen(outpath, "rb"))) {
-		return aga_error_system_path(__FILE__, "fopen", outpath);
-	}
+	result = asys_stream_new(&in, buffer);
+	if(result) return result;
 
-	result = aga_file_copy(fp, in, size);
+	result = asys_stream_splice(stream, &in, count);
 	if(result) goto cleanup;
 
-	if(fclose(in) == EOF) return aga_error_system(__FILE__, "fclose");
+	result = asys_stream_delete(&in);
+	if(result) return result;
 
 	return ASYS_RESULT_OK;
 
 	cleanup: {
-		if(fclose(in) == EOF) (void) aga_error_system(__FILE__, "fclose");
+		asys_log_result(
+				__FILE__, "asys_stream_delete", asys_stream_delete(&in));
 
 		return result;
 	}
@@ -611,7 +579,7 @@ static enum asys_result aga_build_pack_file(
 static enum asys_result aga_build_pack_dir(const char* path, void* pass) {
 	struct aga_build_conf_pass* conf_pass = pass;
 
-	return aga_build_pack_file(path, conf_pass->kind, conf_pass->fp);
+	return aga_build_pack_file(path, conf_pass->kind, conf_pass->stream);
 }
 
 static enum asys_result aga_build_pack(
@@ -619,19 +587,19 @@ static enum asys_result aga_build_pack(
 		void* pass) {
 
 	enum asys_result result;
-	union aga_file_attribute attr;
+	union asys_file_attribute attr;
 
-	if((result = aga_file_attribute_path(path, AGA_FILE_TYPE, &attr))) {
+	if((result = asys_path_attribute(path, ASYS_FILE_TYPE, &attr))) {
 		return result;
 	}
 
-	if(attr.type == AGA_FILE_DIRECTORY) {
+	if(attr.type == ASYS_FILE_DIRECTORY) {
 		struct aga_build_conf_pass conf_pass;
 
-		conf_pass.fp = pass;
+		conf_pass.stream = pass;
 		conf_pass.kind = kind;
 
-		return aga_directory_iterate(
+		return asys_path_iterate(
 				path, aga_build_pack_dir, recurse, &conf_pass, ASYS_TRUE);
 	}
 	else return aga_build_pack_file(path, kind, pass);
@@ -706,43 +674,35 @@ static enum asys_result aga_build_iter(
 }
 
 static void aga_tiff_handler(
-		asys_bool_t warning, const char* module, const char* fmt,
+		asys_bool_t warning, const char* module, const char* format,
 		va_list list) {
 
 	static asys_fixed_buffer_t buffer = { 0 };
-	int ret;
-	char* p = buffer;
 
-	if((ret = sprintf(p, "%s: ", warning ? "warn" : "err")) < 0) {
-		(void) aga_error_system(__FILE__, "sprintf");
-		return;
-	}
-	p += ret;
+	enum asys_result result;
 
-	if(module) {
-		if((ret = sprintf(p, "%s: ", module)) < 0) {
-			(void) aga_error_system(__FILE__, "sprintf");
-			return;
-		}
-		p += ret;
+	const char* prefix = warning ? "warn" : "err";
+	const char* module_tag = module ? module : "<none>";
+
+	result = asys_string_format_variadic(&buffer, 0, format, list);
+	if(result) {
+		asys_log_result(
+				__FILE__, "asys_string_format_variadic", result);
 	}
 
-	if(vsprintf(p, fmt, list) < 0) {
-		(void) aga_error_system(__FILE__, "vsprintf");
-		return;
-	}
-
-	asys_log(__FILE__, buffer);
+	asys_log(__FILE__, "%s: %s: %s", prefix, module_tag, buffer);
 }
 
-static void aga_tiff_error(const char* module, const char* fmt, va_list list) {
-	aga_tiff_handler(ASYS_FALSE, module, fmt, list);
+static void aga_tiff_error(
+		const char* module, const char* format, va_list list) {
+
+	aga_tiff_handler(ASYS_FALSE, module, format, list);
 }
 
 static void aga_tiff_warning(
-		const char* module, const char* fmt, va_list list) {
+		const char* module, const char* format, va_list list) {
 
-	aga_tiff_handler(ASYS_TRUE, module, fmt, list);
+	aga_tiff_handler(ASYS_TRUE, module, format, list);
 }
 
 /* TODO: Lots of leaky error states in here and the above statics. */
@@ -755,7 +715,7 @@ enum asys_result aga_build(struct aga_settings* opts) {
 	struct aga_config_node root;
 	struct aga_config_node* input_root;
 
-	void* fp = 0;
+	struct asys_stream stream;
 	const char* out_path = 0;
 
 	asys_log(__FILE__, "Compiling project `%s'...", opts->build_file);
@@ -777,75 +737,61 @@ enum asys_result aga_build(struct aga_settings* opts) {
 		goto cleanup;
 	}
 
-	if((result = aga_build_open_output(&root, &fp, &out_path))) goto cleanup;
+	result = aga_build_open_output(&root, &stream, &out_path);
+	if(result) goto cleanup;
 
 	asys_log(__FILE__, "Building pack directory...");
 
 	{
 		struct aga_build_conf_pass conf_pass;
 
-		struct aga_resource_pack_header hdr = { 0, AGA_PACK_MAGIC };
-		long off;
-		fpos_t mark;
+		struct aga_resource_pack_header header = { 0, AGA_PACK_MAGIC };
+		asys_offset_t offset;
 
-		conf_pass.fp = fp;
+		conf_pass.stream = &stream;
 		conf_pass.offset = 0;
 
-		if(fwrite(&hdr, sizeof(hdr), 1, fp) < 1) {
-			if(ferror(fp)) result = aga_error_system(__FILE__, "fwrite");
-			else result = ASYS_RESULT_EOF;
+		result = asys_stream_write(
+				&stream, &header, sizeof(struct aga_resource_pack_header));
 
-			goto cleanup;
-		}
-		if(fputs("<root>\n", fp) == EOF) {
-			result = aga_error_system(__FILE__, "fputs");
-			goto cleanup;
-		}
+		if(result) goto cleanup;
+
+		/* TODO: CLI option to emit this separately for inspection. */
+		result = asys_stream_write_format(&stream, "<root>\n");
+		if(result) goto cleanup;
 
 		result = aga_build_iter(
 				input_root, ASYS_FALSE, aga_build_conf, &conf_pass);
 
 		if(result) goto cleanup;
 
-		if(fputs("</root>\n", fp) == EOF) {
-			result = aga_error_system(__FILE__, "fputs");
-			goto cleanup;
-		}
+		result = asys_stream_write_format(&stream, "</root>\n");
+		if(result) goto cleanup;
 
-		if((off = ftell(fp)) == -1) {
-			result = aga_error_system(__FILE__, "ftell");
-			goto cleanup;
-		}
+		result = asys_stream_tell(&stream, &offset);
+		if(result) goto cleanup;
 
-		hdr.size = off - sizeof(hdr);
+		header.size = offset - sizeof(struct aga_resource_pack_header);
 
-		if(fgetpos(fp, &mark)) {
-			result = aga_error_system(__FILE__, "fgetpos");
-			goto cleanup;
-		}
+		result = asys_stream_seek(&stream, ASYS_SEEK_SET, 0);
+		if(result) goto cleanup;
 
-		rewind(fp);
+		result = asys_stream_write(
+				&stream, &header, sizeof(struct aga_resource_pack_header));
 
-		if(fwrite(&hdr, sizeof(hdr), 1, fp) < 1) {
-			if(ferror(fp)) result = aga_error_system(__FILE__, "fwrite");
-			else result = ASYS_RESULT_EOF;
+		if(result) goto cleanup;
 
-			goto cleanup;
-		}
-
-		if(fsetpos(fp, &mark)) {
-			result = aga_error_system(__FILE__, "fsetpos");
-			goto cleanup;
-		}
+		result = asys_stream_seek(&stream, ASYS_SEEK_SET, offset);
+		if(result) goto cleanup;
 	}
 
 	asys_log(__FILE__, "Inserting file data...");
 
-	if((result = aga_build_iter(input_root, ASYS_FALSE, aga_build_pack, fp))) {
-		goto cleanup;
-	}
+	result = aga_build_iter(input_root, ASYS_FALSE, aga_build_pack, &stream);
+	if(result) goto cleanup;
 
-	if(fclose(fp) == EOF) goto cleanup;
+	result = asys_stream_delete(&stream);
+	if(result) goto cleanup;
 
 	if((result = aga_config_delete(&root))) return result;
 
@@ -854,28 +800,26 @@ enum asys_result aga_build(struct aga_settings* opts) {
 	return ASYS_RESULT_OK;
 
 	cleanup: {
-		/* TODO: Destroy failed intermediate files in error cases aswell. */
+		/* TODO: Destroy failed intermediate files in error cases as well. */
 		/*
 		 * NOTE: `out_path' may reside in `root' so this needs to be before
 		 * 		 `aga_config_delete'.
 		 */
 		if(out_path) {
 			asys_log_result(
-					__FILE__, "aga_path_delete",
-					aga_path_delete(out_path));
+					__FILE__, "asys_path_remove", asys_path_remove(out_path));
 		}
 
 		asys_log_result(
 				__FILE__, "aga_config_delete", aga_config_delete(&root));
 
-		if(fp && fclose(fp) == EOF) {
-			(void) aga_error_system(__FILE__, "fclose");
-		}
+		asys_log_result(
+				__FILE__, "asys_stream_delete", asys_stream_delete(&stream));
 
 		asys_log(__FILE__, "err: Build failed");
 
 		return result;
-	};
+	}
 }
 
 #else

@@ -6,6 +6,9 @@
 #include <aga/graph.h>
 #include <aga/render.h>
 
+#include <asys/memory.h>
+#include <asys/log.h>
+
 enum asys_result aga_graph_new(
 		struct aga_graph* graph, struct aga_window_device* env,
 		int argc, char** argv) {
@@ -26,16 +29,16 @@ enum asys_result aga_graph_new(
 	graph->max = 10000;
 	graph->period = 30;
 
-	graph->running = aga_calloc(APRO_MAX, sizeof(apro_unit_t));
-	if(!graph->running) return aga_error_system(__FILE__, "aga_calloc");
+	graph->running = asys_memory_allocate_zero(APRO_MAX, sizeof(apro_unit_t));
+	if(!graph->running) return ASYS_RESULT_OOM;
 
-	graph->histories = aga_calloc(
+	graph->histories = asys_memory_allocate_zero(
 			graph->segments * APRO_MAX, sizeof(apro_unit_t));
 
-	if(!graph->histories) return aga_error_system(__FILE__, "aga_calloc");
+	if(!graph->histories) return ASYS_RESULT_OOM;
 
-	graph->heights = aga_calloc(graph->segments, sizeof(float));
-	if(!graph->heights) return aga_error_system(__FILE__, "aga_calloc");
+	graph->heights = asys_memory_allocate_zero(graph->segments, sizeof(float));
+	if(!graph->heights) return ASYS_RESULT_OOM;
 #else
 	(void) graph;
 	(void) env;
@@ -80,11 +83,11 @@ enum asys_result aga_graph_update(
 	unsigned x = 0;
 	unsigned n = 0;
 
-	result = aga_window_select(env, &graph->window);
-	asys_log_result(__FILE__, "aga_window_select", result);
+	asys_log_result(
+			__FILE__, "aga_window_select",
+			aga_window_select(env, &graph->window));
 
-	result = aga_render_clear(clear);
-	asys_log_result(__FILE__, "aga_render_clear", result);
+	asys_log_result(__FILE__, "aga_render_clear", aga_render_clear(clear));
 
 	graph->inter++;
 
@@ -161,7 +164,7 @@ enum asys_result aga_graph_update(
 
 	if(graph->inter >= graph->period) {
 		graph->inter = 0;
-		aga_bzero(graph->running, APRO_MAX * sizeof(apro_unit_t));
+		asys_memory_zero(graph->running, APRO_MAX * sizeof(apro_unit_t));
 	}
 
 	return aga_window_swap(env, &graph->window);

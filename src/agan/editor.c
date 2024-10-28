@@ -13,6 +13,9 @@
 #include <aga/window.h>
 
 #include <asys/log.h>
+#include <asys/memory.h>
+#include <asys/string.h>
+#include <asys/stream.h>
 
 /*
  * "Editor" functions are isolated here as they should not be callable in
@@ -162,24 +165,21 @@ static struct py_object* agan_dumpobj(
 		if(aga_script_err("aga_config_lookup_check", result)) return 0;
 
 		asys_memory_free(n->data.string);
-		n->data.string = aga_strdup(obj->modelpath);
+		n->data.string = asys_string_duplicate(obj->modelpath);
 	}
 
 	{
-		FILE* f;
-		if(!(f = fopen(path, "w"))) {
-			aga_script_err("fopen", aga_error_system_path(__FILE__, "fopen", path));
-			return 0;
-		}
+		struct asys_stream stream;
+
+		result = asys_stream_new(&stream, path);
+		if(aga_script_err("asys_stream_new", result)) return 0;
 
 		/* TODO: Leaky stream. */
-		result = aga_config_dump(node.children, f);
+		result = aga_config_dump(node.children, &stream);
 		if(aga_script_err("aga_config_dump", result)) return 0;
 
-		if(fclose(f) == EOF) {
-			aga_script_err("fclose", aga_error_system(__FILE__, "fclose"));
-			return 0;
-		}
+		result = asys_stream_delete(&stream);
+		if(aga_script_err("asys_stream_delete", result)) return 0;
 	}
 
 	/* TODO: Leaky conf.. */
@@ -256,7 +256,7 @@ static struct py_object* agan_setobjmdl(
 	 * 		 Above.
 	 */
 	asys_memory_free(node->data.string);
-	node->data.string = aga_strdup(path);
+	node->data.string = asys_string_duplicate(path);
 
 	/* TODO: Soft reload object model here. Delete old drawlist etc. */
 

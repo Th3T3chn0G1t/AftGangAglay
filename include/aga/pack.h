@@ -22,7 +22,12 @@ struct aga_resource_pack_header {
 
 struct aga_resource {
 	asys_size_t refcount;
-	asys_size_t offset; /* Offset into pack data fields, not `data' member. */
+	/*
+	 * TODO: This should be an fpos, not an offset. May need to restructure
+	 * 		 Pack config entries to point to sequential offsets instead of
+	 * 		 Absolute offsets.
+	 */
+	asys_offset_t offset; /* Offset into pack data fields, not data member. */
 
 	void* data;
 	asys_size_t size;

@@ -5,7 +5,6 @@
 
 #include <aga/startup.h>
 #include <aga/pack.h>
-#include <aga/io.h>
 #include <aga/diagnostic.h>
 
 #include <asys/log.h>

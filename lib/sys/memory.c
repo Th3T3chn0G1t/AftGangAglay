@@ -39,7 +39,7 @@ void* asys_memory_allocate(asys_size_t size) {
 #elif defined(ASYS_STDC)
 	void* pointer;
 
-	if(!(pointer = malloc(size))) (void) asys_error_errno(__FILE__, "malloc");
+	if(!(pointer = malloc(size))) (void) asys_result_errno(__FILE__, "malloc");
 
 	return pointer;
 #elif defined(ASYS_UNIX)
@@ -64,7 +64,7 @@ void* asys_memory_allocate_zero(asys_size_t count, asys_size_t size) {
 	void* pointer;
 
 	if(!(pointer = calloc(count, size))) {
-		(void) asys_error_errno(__FILE__, "malloc");
+		(void) asys_result_errno(__FILE__, "malloc");
 	}
 
 	return pointer;
@@ -99,7 +99,7 @@ void* asys_memory_reallocate(void* pointer, asys_size_t size) {
 	return 0;
 #elif defined(ASYS_STDC)
 	if(!(pointer = realloc(pointer, size))) {
-		(void) asys_error_errno(__FILE__, "realloc");
+		(void) asys_result_errno(__FILE__, "realloc");
 	}
 
 	return pointer;

@@ -142,7 +142,7 @@ enum asys_result asys_string_format_variadic(
 
 	if(format_count) *format_count = result;
 
-	if(result < 0) return asys_error_errno(__FILE__, "vsprintf");
+	if(result < 0) return asys_result_errno(__FILE__, "vsprintf");
 
 	return ASYS_RESULT_OK;
 #else

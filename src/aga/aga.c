@@ -9,7 +9,6 @@
 #include <aga/sound.h>
 #include <aga/pack.h>
 #include <aga/midi.h>
-#include <aga/io.h>
 #include <aga/render.h>
 #include <aga/draw.h>
 #include <aga/startup.h>
@@ -114,10 +113,10 @@ int main(int argc, char** argv) {
 	asys_log(__FILE__, "Initializing systems...");
 
 	result = aga_window_device_new(&env, opts.display);
-	asys_error_check(__FILE__, "aga_window_device_new", result);
+	asys_result_check(__FILE__, "aga_window_device_new", result);
 
 	result = aga_keymap_new(&keymap, &env);
-	asys_error_check(__FILE__, "aga_keymap_new", result);
+	asys_result_check(__FILE__, "aga_keymap_new", result);
 
 	if(do_prof) {
 		result = aga_graph_new(&prof, &env, argc, argv);
@@ -127,7 +126,7 @@ int main(int argc, char** argv) {
 	result = aga_window_new(
 			opts.width, opts.height, opts.title,
 			&env, &win, ASYS_TRUE, argc, argv);
-	asys_error_check(__FILE__, "aga_window_new", result);
+	asys_result_check(__FILE__, "aga_window_new", result);
 
 	result = aga_renderer_string(&gl_version);
 	asys_log_result(__FILE__, "aga_renderer_string", result);
@@ -135,7 +134,7 @@ int main(int argc, char** argv) {
 			__FILE__, "Acquired GL context: %s",
 			gl_version ? gl_version : "<error>");
 
-	asys_error_check(__FILE__, "aga_draw_set", aga_draw_set(draw_flags));
+	asys_result_check(__FILE__, "aga_draw_set", aga_draw_set(draw_flags));
 
 	if(opts.audio_enabled) {
 		if((result = aga_sound_device_new(&snd, opts.audio_buffer))) {
@@ -150,19 +149,19 @@ int main(int argc, char** argv) {
 	(void) midi;
 	/*
 	result = aga_midi_device_new(&midi);
-	asys_error_check(__FILE__, "aga_midi_device_new", result);
+	asys_result_check(__FILE__, "aga_midi_device_new", result);
 	{
 		struct aga_resource* mres;
 		struct aga_midi m;
 
 		result = aga_resource_new(&pack, "snd/sndtest.mid.raw", &mres);
-		asys_error_check(__FILE__, "aga_resource_new", result);
+		asys_result_check(__FILE__, "aga_resource_new", result);
 
 		result = aga_midi_new(&midi, &m, mres->data, mres->size);
-		asys_error_check(__FILE__, "aga_midi_new", result);
+		asys_result_check(__FILE__, "aga_midi_new", result);
 
 		result = aga_midi_play(&midi, &m);
-		asys_error_check(__FILE__, "aga_midi_play", result);
+		asys_result_check(__FILE__, "aga_midi_play", result);
 	}*/
 
 	if(!asys_string_equal(opts.version, AGA_VERSION)) {
@@ -183,10 +182,10 @@ int main(int argc, char** argv) {
 		asys_log(__FILE__, "Instantiating game instance...");
 
 		result = aga_script_engine_lookup(&script_engine, &class, "game");
-		asys_error_check(__FILE__, "aga_script_engine_lookup", result);
+		asys_result_check(__FILE__, "aga_script_engine_lookup", result);
 
 		result = aga_script_instance_new(&class, &inst);
-		asys_error_check(__FILE__, "aga_script_instance_new", result);
+		asys_result_check(__FILE__, "aga_script_instance_new", result);
 
 		/* TODO: The EH mode on this right now is terrible. */
 		result = aga_script_instance_call(&script_engine, &inst, "create");

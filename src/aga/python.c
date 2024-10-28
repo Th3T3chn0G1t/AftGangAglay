@@ -30,8 +30,6 @@ void* py_open_r(const char* path) {
 
 		if(!resource->config) continue;
 
-		asys_log(__FILE__, "%s ?= %s", path, resource->config->name);
-
 		if(asys_string_equal(path, resource->config->name)) {
 			enum asys_result result;
 

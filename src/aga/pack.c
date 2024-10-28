@@ -4,8 +4,6 @@
  */
 
 #include <aga/pack.h>
-#include <aga/io.h>
-#include <aga/script.h>
 
 #include <asys/log.h>
 #include <asys/memory.h>

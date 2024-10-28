@@ -3,8 +3,8 @@
  * Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#include <asys/stream.h>
 #include <asys/system.h>
+#include <asys/stream.h>
 #include <asys/error.h>
 #include <asys/string.h>
 
@@ -20,7 +20,7 @@ enum asys_result asys_stream_new(
 	stream->fd = 0;
 
 	if((stream->fd = open(path, O_RDONLY)) == -1) {
-		return asys_error_errno_path(__FILE__, "open", path);
+		return asys_result_errno_path(__FILE__, "open", path);
 	}
 
 	return ASYS_RESULT_OK;
@@ -28,10 +28,49 @@ enum asys_result asys_stream_new(
 	stream->fp = 0;
 
 	if(!(stream->fp = fopen(path, "r"))) {
-		return asys_error_errno_path(__FILE__, "fopen", path);
+		return asys_result_errno_path(__FILE__, "fopen", path);
 	}
 
 	return ASYS_RESULT_OK;
+#else
+	(void) stream;
+	(void) path;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#endif
+}
+
+enum asys_result asys_stream_new_write(
+		struct asys_stream* stream, const char* path) {
+
+#ifdef AGA_DEVBUILD
+# ifdef ASYS_WIN32
+	(void) stream;
+	(void) path;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+# elif defined(ASYS_UNIX)
+	stream->fd = 0;
+
+	if((stream->fd = open(path, O_WRONLY)) == -1) {
+		return asys_result_errno_path(__FILE__, "open", path);
+	}
+
+	return ASYS_RESULT_OK;
+# elif defined(ASYS_STDC)
+	stream->fp = 0;
+
+	if(!(stream->fp = fopen(path, "w"))) {
+		return asys_result_errno_path(__FILE__, "fopen", path);
+	}
+
+	return ASYS_RESULT_OK;
+# else
+	(void) stream;
+	(void) path;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+# endif
 #else
 	(void) stream;
 	(void) path;
@@ -47,16 +86,32 @@ enum asys_result asys_stream_delete(struct asys_stream* stream) {
 	return ASYS_RESULT_NOT_IMPLEMENTED;
 #elif defined(ASYS_UNIX)
 	if(stream->fd && close(stream->fd) == -1) {
-		return asys_error_errno(__FILE__, "close");
+		return asys_result_errno(__FILE__, "close");
 	}
 
 	return ASYS_RESULT_OK;
 #elif defined(ASYS_STDC)
 	if(stream->fp && fclose(stream->fp) == EOF) {
-		return asys_error_errno(__FILE__, "fclose");
+		return asys_result_errno(__FILE__, "fclose");
 	}
 
 	return ASYS_RESULT_OK;
+#else
+	(void) stream;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#endif
+}
+
+asys_stream_native_t asys_stream_native(struct asys_stream* stream) {
+#ifdef ASYS_WIN32
+	(void) stream;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#elif defined(ASYS_UNIX)
+	return stream->fd;
+#elif defined(ASYS_STDC)
+	return stream->fp;
 #else
 	(void) stream;
 
@@ -89,7 +144,7 @@ enum asys_result asys_stream_seek(
 	int seek_whence = asys_stream_whence_to_stdio(whence);
 
 	if(lseek(stream->fd, offset, seek_whence) == -1) {
-		return asys_error_errno(__FILE__, "lseek");
+		return asys_result_errno(__FILE__, "lseek");
 	}
 
 	return ASYS_RESULT_OK;
@@ -97,13 +152,43 @@ enum asys_result asys_stream_seek(
 	int seek_whence = asys_stream_whence_to_stdio(whence);
 
 	if(fseek(stream->fp, offset, seek_whence) == -1) {
-		return asys_error_errno(__FILE__, "fseek");
+		return asys_result_errno(__FILE__, "fseek");
 	}
 
 	return ASYS_RESULT_OK;
 #else
 	(void) stream;
 	(void) whence;
+	(void) offset;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#endif
+}
+
+enum asys_result asys_stream_tell(
+		struct asys_stream* stream, asys_offset_t* offset) {
+
+#ifdef ASYS_WIN32
+	(void) stream;
+	(void) offset;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#elif defined(ASYS_UNIX)
+	(void) stream;
+	(void) offset;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#elif defined(ASYS_STDC)
+	long result;
+
+	result = ftell(stream->fp);
+	if(result == -1) return asys_result_errno(__FILE__, "ftell");
+
+	*offset = (asys_offset_t) result;
+
+	return ASYS_RESULT_OK;
+#else
+	(void) stream;
 	(void) offset;
 
 	return ASYS_RESULT_NOT_IMPLEMENTED;
@@ -126,7 +211,7 @@ enum asys_result asys_stream_read(
 	if(read_count) *read_count = (asys_size_t) result;
 
 	if(result == (ssize_t) count) return ASYS_RESULT_OK;
-	else if(result == -1) return asys_error_errno(__FILE__, "read");
+	else if(result == -1) return asys_result_errno(__FILE__, "read");
 	else return ASYS_RESULT_EOF;
 #elif defined(ASYS_STDC)
 	asys_size_t result = fread(buffer, 1, count, stream->fp);
@@ -138,7 +223,7 @@ enum asys_result asys_stream_read(
 	}
 	else if(ferror(stream->fp)) {
 		clearerr(stream->fp);
-		return asys_error_errno(__FILE__, "fread");
+		return asys_result_errno(__FILE__, "fread");
 	}
 
 	return ASYS_RESULT_OK;
@@ -194,6 +279,7 @@ static enum asys_result asys_file_attribute_stat(
 }
 #endif
 
+/* TODO: File kind of a stream is always `FILE'. */
 enum asys_result asys_stream_attribute(
 		struct asys_stream* stream, enum asys_file_attribute_type type,
 		union asys_file_attribute* attribute) {
@@ -208,7 +294,7 @@ enum asys_result asys_stream_attribute(
 	struct stat buffer;
 
 	if(fstat(stream->fd, &buffer) == -1) {
-		return asys_error_errno(__FILE__, "fstat");
+		return asys_result_errno(__FILE__, "fstat");
 	}
 
 	return asys_file_attribute_stat(&buffer, type, attribute);
@@ -239,7 +325,7 @@ enum asys_result asys_stream_write(
 	return ASYS_RESULT_NOT_IMPLEMENTED;
 # elif defined(ASYS_UNIX)
 	if(write(stream->fd, buffer, count) == -1) {
-		return asys_error_errno(__FILE__, "write");
+		return asys_result_errno(__FILE__, "write");
 	}
 
 	return ASYS_RESULT_OK;
@@ -248,7 +334,7 @@ enum asys_result asys_stream_write(
 
 	if(ferror(stream->fp)) {
 		clearerr(stream->fp);
-		return asys_error_errno(__FILE__, "fwrite");
+		return asys_result_errno(__FILE__, "fwrite");
 	}
 
 	return ASYS_RESULT_OK;
@@ -272,18 +358,35 @@ enum asys_result asys_stream_write_format(
 		struct asys_stream* stream, const char* format, ...) {
 
 #ifdef AGA_DEVBUILD
-	static asys_fixed_buffer_t buffer = { 0 };
-
 	enum asys_result result;
-	asys_size_t count;
+
 	va_list list;
 
 	va_start(list, format);
 
-	result = asys_string_format_variadic(&buffer, &count, format, list);
+	result = asys_stream_write_format_variadic(stream, format, list);
 
 	va_end(list);
 
+	return result;
+#else
+	(void) stream;
+	(void) format;
+
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#endif
+}
+
+enum asys_result asys_stream_write_format_variadic(
+		struct asys_stream* stream, const char* format, va_list list) {
+
+#ifdef AGA_DEVBUILD
+	static asys_fixed_buffer_t buffer = { 0 };
+
+	enum asys_result result;
+	asys_size_t count;
+
+	result = asys_string_format_variadic(&buffer, &count, format, list);
 	if(result) return result;
 
 	return asys_stream_write(stream, buffer, count);
