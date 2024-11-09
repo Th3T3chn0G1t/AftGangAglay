@@ -21,7 +21,7 @@ FILE* f;
 
 if(!(f = fopen(path, "r"))) {
 if(errno == EISDIR) *isdir = ASYS_TRUE;
-else return aga_error_system_path(__FILE__, "fopen", path);
+else return asys_result_errno_path(__FILE__, "fopen", path);
 }
 else *isdir = ASYS_FALSE;
 
@@ -87,7 +87,7 @@ enum asys_result asys_path_attribute(
 		struct stat st;
 
 		if(stat(path, &st) == -1) {
-			return aga_error_system_path(__FILE__, "stat", path);
+			return asys_result_errno_path(__FILE__, "stat", path);
 		}
 
 		return asys_file_attribute_select_stat(&st, attr, out);
@@ -101,7 +101,7 @@ enum asys_result asys_path_attribute(
 		void* fp;
 
 		if(!(fp = fopen(path, "rb"))) {
-			return aga_error_system_path(__FILE__, "fopen", path);
+			return asys_result_errno_path(__FILE__, "fopen", path);
 		}
 
 		if((result = asys_file_attribute_select(fp, attr, out))) return result;
@@ -387,7 +387,7 @@ enum asys_result asys_path_iterate(
 	union asys_file_attribute attr;
 
 	if(!(d = opendir(path))) {
-		return aga_error_system_path(__FILE__, "opendir", path);
+		return asys_result_errno_path(__FILE__, "opendir", path);
 	}
 
 	/* TODO: Leaky EH. */
@@ -397,7 +397,7 @@ enum asys_result asys_path_iterate(
 		if(ent->d_name[0] == '.') continue;
 
 		if(sprintf(buffer, "%s/%s", path, ent->d_name) < 0) {
-			result = aga_error_system(__FILE__, "sprintf");
+			result = asys_result_errno(__FILE__, "sprintf");
 			if(keep_going) {
 				held_result = result;
 				continue;
@@ -419,7 +419,7 @@ enum asys_result asys_path_iterate(
 		if(attr.type == ASYS_FILE_DIRECTORY) {
 			if(recurse) {
 				result = asys_path_iterate(
-						buffer, fn, recurse, pass, keep_going);
+						buffer, callback, recurse, pass, keep_going);
 
 				if(result) {
 					if(keep_going) {
@@ -435,7 +435,7 @@ enum asys_result asys_path_iterate(
 			}
 			else continue;
 		}
-		else if((result = fn(buffer, pass))) {
+		else if((result = callback(buffer, pass))) {
 			if(keep_going) {
 				asys_log_result_path(
 						__FILE__, "asys_path_iterate::<callback>", buffer,
@@ -448,7 +448,7 @@ enum asys_result asys_path_iterate(
 		}
 	}
 
-	if(closedir(d) == -1) return aga_error_system(__FILE__, "closedir");
+	if(closedir(d) == -1) return asys_result_errno(__FILE__, "closedir");
 
 	return held_result;
 #else

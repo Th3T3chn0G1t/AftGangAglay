@@ -117,6 +117,31 @@ static enum asys_result aga_build_open_output(
 	return ASYS_RESULT_OK;
 }
 
+static asys_bool_t aga_build_path_matches_kind(
+		const char* path, enum aga_file_kind kind) {
+
+	/*
+	 * TODO: Reduce all paths to within basic FAT restrictions -- including our
+	 * 		 Source tree!
+	 */
+	static const char* kind_exts[] = {
+			"", /* AGA_KIND_NONE */
+			".raw", /* AGA_KIND_RAW */
+			".tiff", /* AGA_KIND_TIFF */
+			".obj", /* AGA_KIND_OBJ */
+			".sgml", /* AGA_KIND_SGML */
+			".py", /* AGA_KIND_PY */
+			".wav", /* AGA_KIND_WAV */
+			".mid" /* AGA_KIND_MIDI */
+	};
+
+	/* TODO: `strcasecmp'? */
+	const char* ext = strrchr(path, '.');
+	if(!ext || !asys_string_equal(ext, kind_exts[kind])) return ASYS_FALSE;
+
+	return ASYS_TRUE;
+}
+
 static enum asys_result aga_fprintf_add(
 		struct asys_stream* stream, asys_size_t indent,
 		const char* format, ...) {
@@ -261,31 +286,6 @@ static enum asys_result aga_build_tiff(
 	return result;
 }
 
-static asys_bool_t aga_build_path_matches_kind(
-		const char* path, enum aga_file_kind kind) {
-
-	/*
-	 * TODO: Reduce all paths to within basic FAT restrictions -- including our
-	 * 		 Source tree!
-	 */
-	static const char* kind_exts[] = {
-			"", /* AGA_KIND_NONE */
-			".raw", /* AGA_KIND_RAW */
-			".tiff", /* AGA_KIND_TIFF */
-			".obj", /* AGA_KIND_OBJ */
-			".sgml", /* AGA_KIND_SGML */
-			".py", /* AGA_KIND_PY */
-			".wav", /* AGA_KIND_WAV */
-			".mid" /* AGA_KIND_MIDI */
-	};
-
-	/* TODO: `strcasecmp'? */
-	const char* ext = strrchr(path, '.');
-	if(!ext || !asys_string_equal(ext, kind_exts[kind])) return ASYS_FALSE;
-
-	return ASYS_TRUE;
-}
-
 static enum asys_result aga_build_input_file(
 		const char* path, enum aga_file_kind kind) {
 
@@ -314,7 +314,7 @@ static enum asys_result aga_build_input_file(
 	result = asys_stream_new(&in, path);
 	if(result) return result;
 
-	result = asys_stream_new_write(&out, path);
+	result = asys_stream_new_write(&out, buffer);
 	if(result) goto cleanup;
 
 	switch(kind) {

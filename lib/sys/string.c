@@ -9,12 +9,29 @@
 #include <asys/error.h>
 #include <asys/log.h>
 
-asys_bool_t asys_character_blank(char character) {
+int asys_character_is_blank(int character) {
 #ifdef ASYS_STDC
 	return isspace(character);
 #else
 	return character == ' ' || character == '\r' || character == '\t' ||
 			character == '\n';
+#endif
+}
+
+int asys_character_is_letter(int character) {
+#ifdef ASYS_STDC
+	return isalpha(character);
+#else
+	return (character >= 'a' && character <= 'z') ||
+			(character >= 'A' && character <= 'Z');
+#endif
+}
+
+int asys_character_is_digit(int character) {
+#ifdef ASYS_STDC
+	return isalpha(character);
+#else
+	return character >= '0' && character <= '9';
 #endif
 }
 
@@ -61,6 +78,213 @@ void asys_string_concatenate(char* to, const char* from) {
 #endif
 }
 
+#ifndef ASYS_STDC
+static asys_offset_t asys_string_find_base(
+		const char* string, char character) {
+
+	asys_size_t i;
+
+	for(i = 0; string[i]; ++i) {
+		if(string[i] == character) return (asys_offset_t) i;
+	}
+
+	if(character == '\0') return (asys_offset_t) i;
+
+	return -1;
+}
+
+static asys_offset_t asys_string_reverse_find_base(
+		const char* string, char character) {
+
+	asys_size_t i, last = -1;
+
+	for(i = 0; string[i]; ++i) {
+		if(string[i] == character) last = i;
+	}
+
+	if(character == '\0') return (asys_offset_t) i;
+
+	return (asys_offset_t) last;
+}
+#endif
+
+char* asys_string_find(char* string, char character) {
+#ifdef ASYS_STDC
+	return strchr(string, character);
+#else
+	asys_offset_t offset;
+
+	if((offset = asys_string_find_base(string, character)) == -1) return 0;
+
+	return string + offset;
+#endif
+}
+
+const char* asys_string_find_const(const char* string, char character) {
+#ifdef ASYS_STDC
+	return strchr(string, character);
+#else
+	asys_offset_t offset;
+
+	if((offset = asys_string_find_base(string, character)) == -1) return 0;
+
+	return string + offset;
+#endif
+}
+
+char* asys_string_reverse_find(char* string, char character) {
+#ifdef ASYS_STDC
+	return strrchr(string, character);
+#else
+	asys_offset_t offset;
+
+	offset = asys_string_reverse_find_base(string, character);
+	if(offset == -1) return 0;
+
+	return string + offset;
+#endif
+}
+
+const char* asys_string_reverse_find_const(
+		const char* string, char character) {
+
+#ifdef ASYS_STDC
+	return strrchr(string, character);
+#else
+	asys_offset_t offset;
+
+	offset = asys_string_reverse_find_base(string, character);
+	if(offset == -1) return 0;
+
+	return string + offset;
+#endif
+}
+
+static asys_offset_t asys_string_find_predicate_base(
+		const char* string, asys_string_find_predicate_t predicate,
+		asys_bool_t inverse) {
+
+	asys_size_t i;
+
+	for(i = 0; string[i]; ++i) {
+		if(!!predicate(string[i]) != inverse) return (asys_offset_t) i;
+	}
+
+	if(!!predicate('\0') != inverse) return (asys_offset_t) i;
+
+	return -1;
+}
+
+static asys_offset_t asys_string_reverse_find_predicate_base(
+		const char* string, asys_string_find_predicate_t predicate,
+		asys_bool_t inverse) {
+
+	asys_size_t i, last = -1;
+
+	for(i = 0; string[i]; ++i) {
+		if(!!predicate(string[i]) != inverse) last = i;
+	}
+
+	if(!!predicate('\0') != inverse) return (asys_offset_t) i;
+
+	return (asys_offset_t) last;
+}
+
+char* asys_string_find_predicate(
+		char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_find_predicate_base(string, predicate, ASYS_FALSE);
+	if(offset == -1) return 0;
+
+	return string + offset;
+}
+
+const char* asys_string_find_const_predicate(
+		const char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_find_predicate_base(string, predicate, ASYS_FALSE);
+	if(offset == -1) return 0;
+
+	return string + offset;
+}
+
+char* asys_string_reverse_find_predicate(
+		char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_reverse_find_predicate_base(
+				string, predicate, ASYS_FALSE);
+
+	if(offset == -1) return 0;
+
+	return string + offset;
+}
+
+const char* asys_string_reverse_find_const_predicate(
+		const char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_reverse_find_predicate_base(
+				string, predicate, ASYS_FALSE);
+
+	if(offset == -1) return 0;
+
+	return string + offset;
+}
+
+char* asys_string_find_predicate_inverse(
+		char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_find_predicate_base(string, predicate, ASYS_TRUE);
+
+	return string + offset;
+}
+
+const char* asys_string_find_const_predicate_inverse(
+		const char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_find_predicate_base(string, predicate, ASYS_TRUE);
+	if(offset == -1) return 0;
+
+	return string + offset;
+}
+
+char* asys_string_reverse_find_predicate_inverse(
+		char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_reverse_find_predicate_base(
+			string, predicate, ASYS_TRUE);
+
+	if(offset == -1) return 0;
+
+	return string + offset;
+}
+
+const char* asys_string_reverse_find_const_predicate_inverse(
+		const char* string, asys_string_find_predicate_t predicate) {
+
+	asys_offset_t offset;
+
+	offset = asys_string_reverse_find_predicate_base(
+			string, predicate, ASYS_TRUE);
+
+	if(offset == -1) return 0;
+
+	return string + offset;
+}
+
 char* asys_string_duplicate(const char* string) {
 	/* TODO: Detect impl. native `strdup'. */
 
@@ -72,22 +296,28 @@ char* asys_string_duplicate(const char* string) {
 	return new;
 }
 
-asys_native_long_t asys_string_to_native_long(const char* string) {
+asys_native_long_t asys_string_to_native_long(
+		const char* string, char** end) {
+
 /* TODO: Did Windows 3.1 have a native way of doing this? */
-/* TODO: Should we normalise `strtol' behaviours with our simpler impl.? */
-#ifdef ASYS_STDC
+#ifdef ASYS_STDCa
 # ifdef ASYS_LP32
-	return strtoll(string, 0, 0);
+	return strtoll(string, end, 10);
 # else
-	return strtol(string, 0, 0);
+	return strtol(string, end, 10);
 # endif
 #else
-	asys_size_t i;
 	asys_size_t len = asys_string_length(string);
+	asys_size_t i = len;
 	asys_native_long_t ret = 0;
 	asys_bool_t negate = (string[0] == '-');
 
-	for(i = len; i > (negate ? 1 : 0); --i) {
+	while(string[i - 1] < '0' || string[i - 1] > '9') i--;
+
+	/* TODO: Work out const-ness on end ptr. */
+	if(end) *end = (char*) &string[i];
+
+	for(; i > (negate ? 1 : 0); --i) {
 		asys_native_long_t v;
 		char c = string[i - 1];
 
@@ -101,12 +331,13 @@ asys_native_long_t asys_string_to_native_long(const char* string) {
 #endif
 }
 
-double asys_string_to_double(const char* string) {
+double asys_string_to_double(const char* string, char** end) {
 #ifdef ASYS_STDC
-	return strtod(string, 0);
+	return strtod(string, end);
 #else
 	/* TODO: Roll our own impl.. */
 	(void) string;
+	(void) end;
 
 	return 0.0;
 #endif

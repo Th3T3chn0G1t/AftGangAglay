@@ -4,6 +4,7 @@
  */
 
 /* TODO: Fuzz headless. */
+/* TODO: Isolate agabuild file input types and test individually. */
 
 #include <aga/window.h>
 #include <aga/sound.h>

@@ -84,6 +84,10 @@ typedef asys_native_long_t asys_time_t;
 
 typedef enum asys_bool { ASYS_TRUE = 1, ASYS_FALSE = 0 } asys_bool_t;
 
+/*
+ * TODO: This can be smaller on Windows as `wsprintf''s maximum buffer size is
+ * 		 `1024'.
+ */
 #define ASYS_FIXED_BUFFER_SIZE (2048 + 1)
 
 /*

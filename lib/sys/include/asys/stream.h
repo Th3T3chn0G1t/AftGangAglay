@@ -33,6 +33,10 @@ enum asys_result asys_stream_tell(struct asys_stream*, asys_offset_t*);
 enum asys_result asys_stream_read(
 		struct asys_stream*, asys_size_t*, void*, asys_size_t);
 
+/* NOTE: Replicates `fgets'-style line reads. */
+enum asys_result asys_stream_read_line(
+		struct asys_stream*, void*, asys_size_t);
+
 enum asys_result asys_stream_attribute(
 		struct asys_stream*, enum asys_file_attribute_type,
 		union asys_file_attribute*);

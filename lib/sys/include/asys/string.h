@@ -9,18 +9,48 @@
 #include <asys/base.h>
 #include <asys/result.h>
 
-asys_bool_t asys_character_blank(char);
+typedef int (*asys_string_find_predicate_t)(int);
+
+int asys_character_is_blank(int);
+int asys_character_is_letter(int);
+int asys_character_is_digit(int);
 
 asys_size_t asys_string_length(const char*);
 
 asys_bool_t asys_string_equal(const char*, const char*);
 void asys_string_concatenate(char*, const char*);
 
+char* asys_string_find(char*, char);
+const char* asys_string_find_const(const char*, char);
+
+char* asys_string_reverse_find(char*, char);
+const char* asys_string_reverse_find_const(const char*, char);
+
+char* asys_string_find_predicate(char*, asys_string_find_predicate_t);
+const char* asys_string_find_const_predicate(
+		const char*, asys_string_find_predicate_t);
+
+char* asys_string_reverse_find_predicate(char*, asys_string_find_predicate_t);
+const char* asys_string_reverse_find_const_predicate(
+		const char*, asys_string_find_predicate_t);
+
+char* asys_string_find_predicate_inverse(
+		char*, asys_string_find_predicate_t);
+
+const char* asys_string_find_const_predicate_inverse(
+		const char*, asys_string_find_predicate_t);
+
+char* asys_string_reverse_find_predicate_inverse(
+		char*, asys_string_find_predicate_t);
+
+const char* asys_string_reverse_find_const_predicate_inverse(
+		const char*, asys_string_find_predicate_t);
+
 /* NOTE: In case of null return, assume `ASYS_RESULT_OOM' error value. */
 char* asys_string_duplicate(const char*);
 
-asys_native_long_t asys_string_to_native_long(const char*);
-double asys_string_to_double(const char*);
+asys_native_long_t asys_string_to_native_long(const char*, char**);
+double asys_string_to_double(const char*, char**);
 
 enum asys_result asys_string_format(
 		asys_fixed_buffer_t*, asys_size_t*, const char*, ...);

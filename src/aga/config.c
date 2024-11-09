@@ -149,7 +149,7 @@ static void aga_sgml_put_character(struct aga_sgml_structured* me, char c) {
 	/*asys_log(__FILE__, "aga_sgml_put_character: %c", c);*/
 
 	if(node->type == AGA_NONE) return;
-	if(!node->data.string && asys_character_blank(c)) return;
+	if(!node->data.string && asys_character_is_blank(c)) return;
 
 	node->data.string = asys_memory_reallocate_safe(
 			node->data.string, ++node->scratch + 1);
@@ -290,7 +290,7 @@ static void aga_sgml_end_element(
 		asys_size_t n = node->scratch - i;
 		char* c = &string[n];
 
-		if(asys_character_blank(*c)) *c = 0;
+		if(asys_character_is_blank(*c)) *c = 0;
 		else if(*c) break;
 	}
 
@@ -309,7 +309,7 @@ static void aga_sgml_end_element(
 				break;
 			}
 
-			res = asys_string_to_native_long(node->data.string);
+			res = asys_string_to_native_long(node->data.string, 0);
 			asys_memory_free(string);
 			node->data.integer = res;
 
@@ -329,7 +329,7 @@ static void aga_sgml_end_element(
 				break;
 			}
 
-			res = asys_string_to_double(node->data.string);
+			res = asys_string_to_double(node->data.string, 0);
 			asys_memory_free(string);
 			node->data.flt = res;
 

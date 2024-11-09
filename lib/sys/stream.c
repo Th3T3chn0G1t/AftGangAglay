@@ -290,6 +290,28 @@ enum asys_result asys_stream_read(
 #endif
 }
 
+enum asys_result asys_stream_read_line(
+		struct asys_stream* stream, void* buffer, asys_size_t count) {
+
+	enum asys_result result;
+
+	char character;
+	char* bytes = buffer;
+	char* current = buffer;
+
+	while(!(result = asys_stream_read(stream, 0, &character, 1))) {
+		if((asys_size_t) (current - bytes) == count - 1) break;
+
+		*current++ = character;
+
+		if(character == '\n') break;
+	}
+
+	*current = 0;
+
+	return result;
+}
+
 /* TODO: File kind of a stream is always `FILE'. */
 enum asys_result asys_stream_attribute(
 		struct asys_stream* stream, enum asys_file_attribute_type type,
