@@ -9,15 +9,7 @@
 #include <asys/base.h>
 #include <asys/result.h>
 #include <asys/filedata.h>
-
-#ifdef ASYS_WIN32
-# include <asys/sys/win32/streamdata.h>
-#elif defined(ASYS_UNIX)
-# include <asys/sys/unix/streamdata.h>
-#elif defined(ASYS_STDC)
-# include <asys/sys/stdc/streamdata.h>
-/* TODO: #else RAM-disk support with an embedded pack? */
-#endif
+#include <asys/streamdata.h>
 
 #define ASYS_COPY_ALL ((asys_size_t) -1)
 

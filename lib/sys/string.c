@@ -7,16 +7,14 @@
 #include <asys/string.h>
 #include <asys/memory.h>
 #include <asys/error.h>
+#include <asys/log.h>
 
 asys_bool_t asys_character_blank(char character) {
-#ifdef ASYS_WIN32
-	(void) character;
-
-	return ASYS_FALSE;
-#elif defined(ASYS_STDC)
+#ifdef ASYS_STDC
 	return isspace(character);
 #else
-	return c == ' ' || c == '\r' || c == '\t' || c == '\n';
+	return character == ' ' || character == '\r' || character == '\t' ||
+			character == '\n';
 #endif
 }
 
@@ -34,8 +32,11 @@ asys_size_t asys_string_length(const char* string) {
 #endif
 }
 
+/* TODO: `lstrcmpi' exists for `strcasecmp'. */
 asys_bool_t asys_string_equal(const char* a, const char* b) {
-#ifdef ASYS_STDC
+#ifdef ASYS_WIN32
+	return !lstrcmp(a, b);
+#elif defined(ASYS_STDC)
 	return !strcmp(a, b);
 #else
 	asys_size_t i = 0;
@@ -50,7 +51,9 @@ asys_bool_t asys_string_equal(const char* a, const char* b) {
 }
 
 void asys_string_concatenate(char* to, const char* from) {
-#ifdef ASYS_STDC
+#ifdef ASYS_WIN32
+	lstrcat(to, from);
+#elif defined(ASYS_STDC)
 	strcat(to, from);
 #else
 	(void) to;
@@ -102,6 +105,7 @@ double asys_string_to_double(const char* string) {
 #ifdef ASYS_STDC
 	return strtod(string, 0);
 #else
+	/* TODO: Roll our own impl.. */
 	(void) string;
 
 	return 0.0;
@@ -129,12 +133,18 @@ enum asys_result asys_string_format_variadic(
 		const char* format, va_list list) {
 
 #ifdef ASYS_WIN32
+	enum asys_result result;
+
 	/* TODO: MSDN makes it unclear if this is the correct error condition. */
-	int result = wvsprintf(*buffer, format, list);
+	int count = wvsprintf(*buffer, format, list);
 
-	if(format_count) *format_count = result;
+	if(format_count) *format_count = count;
 
-	if(result < 0) return ASYS_RESULT_ERROR;
+	if(count < 0) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "wvsprintf", result);
+		return result;
+	}
 
 	return ASYS_RESULT_OK;
 #elif defined(ASYS_STDC)

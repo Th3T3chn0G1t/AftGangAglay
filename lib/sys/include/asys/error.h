@@ -9,10 +9,12 @@
 #include <asys/base.h>
 #include <asys/result.h>
 
-ASYS_NORETURN void asys_abort(void);
+void asys_result_format(
+		asys_fixed_buffer_t*, const char*, const char*, enum asys_result);
 
-ASYS_NORETURN void asys_result_fatal(
-		const char*, const char*, enum asys_result);
+void asys_result_fatal(const char*, const char*, enum asys_result);
+void asys_result_fatal_path(
+		const char*, const char*, const char*, enum asys_result);
 
 void asys_result_check(const char*, const char*, enum asys_result);
 void asys_result_check_path(

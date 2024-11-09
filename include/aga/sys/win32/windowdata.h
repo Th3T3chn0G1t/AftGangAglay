@@ -15,9 +15,7 @@ struct aga_window {
 
 /* TODO: Move event state output to window device? */
 struct aga_window_device {
-	void* module;
 	void* cursor;
-	int class;
 	asys_bool_t visible, captured;
 };
 

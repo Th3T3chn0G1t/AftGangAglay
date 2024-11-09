@@ -6,9 +6,11 @@
 #include <asys/memory.h>
 #include <asys/system.h>
 #include <asys/error.h>
+#include <asys/log.h>
 
 void asys_memory_zero(void* pointer, asys_size_t count) {
 /* TODO: Detect `bzero'. */
+/* TODO: Does `memset' work on Windows without CRT? */
 #ifdef ASYS_STDC
 	memset(pointer, 0, count);
 #else
@@ -20,7 +22,9 @@ void asys_memory_zero(void* pointer, asys_size_t count) {
 }
 
 void asys_memory_copy(void* to, const void* from, asys_size_t count) {
-#ifdef ASYS_STDC
+#ifdef ASYS_WIN32
+	hmemcpy(to, from, count);
+#elif defined(ASYS_STDC)
 	memcpy(to, from, count);
 #else
 	asys_size_t i;
@@ -31,15 +35,31 @@ void asys_memory_copy(void* to, const void* from, asys_size_t count) {
 #endif
 }
 
+/* TODO: Temporary -- make a better tracker. */
+#ifdef ASYS_WIN32
+static asys_size_t aga_global_memory_use = 0;
+#endif
+
 void* asys_memory_allocate(asys_size_t size) {
 #ifdef ASYS_WIN32
-	(void) size;
+	void* pointer;
 
-	return 0;
+	pointer = GlobalAlloc(0, size);
+	if(!pointer) asys_log_result(__FILE__, "GlobalAlloc", ASYS_RESULT_OOM);
+
+	aga_global_memory_use += size;
+	asys_log(
+			__FILE__,
+			"Allocated block of size `" ASYS_NATIVE_ULONG_FORMAT "' "
+			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
+			size, aga_global_memory_use);
+
+	return pointer;
 #elif defined(ASYS_STDC)
 	void* pointer;
 
-	if(!(pointer = malloc(size))) (void) asys_result_errno(__FILE__, "malloc");
+	pointer = malloc(size);
+	if(!pointer) (void) asys_result_errno(__FILE__, "malloc");
 
 	return pointer;
 #elif defined(ASYS_UNIX)
@@ -57,15 +77,24 @@ void* asys_memory_allocate(asys_size_t size) {
 
 void* asys_memory_allocate_zero(asys_size_t count, asys_size_t size) {
 #ifdef ASYS_WIN32
-	(void) size;
+	void* pointer;
 
-	return 0;
+	pointer = GlobalAlloc(GMEM_ZEROINIT, count * size);
+	if(!pointer) asys_log_result(__FILE__, "GlobalAlloc", ASYS_RESULT_OOM);
+
+	aga_global_memory_use += size;
+	asys_log(
+			__FILE__,
+			"Allocated block of size `" ASYS_NATIVE_ULONG_FORMAT "' "
+			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
+			size, aga_global_memory_use);
+
+	return pointer;
 #elif defined(ASYS_STDC)
 	void* pointer;
 
-	if(!(pointer = calloc(count, size))) {
-		(void) asys_result_errno(__FILE__, "malloc");
-	}
+	pointer = calloc(count, size);
+	if(!pointer) (void) asys_result_errno(__FILE__, "calloc");
 
 	return pointer;
 #elif defined(ASYS_UNIX)
@@ -81,7 +110,24 @@ void* asys_memory_allocate_zero(asys_size_t count, asys_size_t size) {
 
 void asys_memory_free(void* pointer) {
 #ifdef ASYS_WIN32
-	(void) pointer;
+	asys_size_t size;
+
+	if(!pointer) return;
+
+	if(!(size = GlobalSize(pointer))) {
+		asys_log_result(__FILE__, "GlobalSize", ASYS_RESULT_ERROR);
+	}
+
+	if(GlobalFree(pointer)) {
+		asys_log_result(__FILE__, "GlobalFree", ASYS_RESULT_ERROR);
+	}
+
+	aga_global_memory_use -= size;
+	asys_log(
+			__FILE__,
+			"Freed block of size `" ASYS_NATIVE_ULONG_FORMAT "' "
+			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
+			size, aga_global_memory_use);
 #elif defined(ASYS_STDC)
 	free(pointer);
 #elif defined(ASYS_UNIX)
@@ -91,12 +137,45 @@ void asys_memory_free(void* pointer) {
 #endif
 }
 
+/*
+ * TODO: Add zeroed realloc to take advantage of `GlobalReAlloc' native zero
+ * 		 Init.
+ */
 void* asys_memory_reallocate(void* pointer, asys_size_t size) {
 #ifdef ASYS_WIN32
-	(void) pointer;
-	(void) size;
+	asys_size_t old_size;
+	asys_isize_t delta;
 
-	return 0;
+	if(!pointer) {
+		old_size = 0;
+		delta = size;
+
+		if(!(pointer = GlobalAlloc(0, size))) {
+			asys_log_result(__FILE__, "GlobalAlloc", ASYS_RESULT_OOM);
+		}
+	}
+	else {
+		if(!(old_size = GlobalSize(pointer))) {
+			asys_log_result(__FILE__, "GlobalSize", ASYS_RESULT_ERROR);
+		}
+
+		delta = size - old_size;
+
+		if(!(pointer = GlobalReAlloc(pointer, size, GMEM_MOVEABLE))) {
+			asys_log_result(__FILE__, "GlobalReAlloc", ASYS_RESULT_OOM);
+		}
+	}
+
+	/* TODO: Message and don't adjust size on allocation failure. */
+	aga_global_memory_use += delta;
+	asys_log(
+			__FILE__,
+			"Reallocated block of size `" ASYS_NATIVE_ULONG_FORMAT "' "
+			"to `" ASYS_NATIVE_ULONG_FORMAT "' "
+			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
+			old_size, size, aga_global_memory_use);
+
+	return pointer;
 #elif defined(ASYS_STDC)
 	if(!(pointer = realloc(pointer, size))) {
 		(void) asys_result_errno(__FILE__, "realloc");

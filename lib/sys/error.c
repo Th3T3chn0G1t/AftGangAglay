@@ -6,6 +6,7 @@
 #include <asys/error.h>
 #include <asys/log.h>
 #include <asys/system.h>
+#include <asys/string.h>
 
 /*
  * TODO: Implement user-friendly error dialogs.
@@ -24,23 +25,51 @@ if(res) (void) aga_shell_open(report_uri);
 exit(EXIT_FAILURE);
  */
 
-ASYS_NORETURN void asys_abort(void) {
-#ifdef ASYS_STDC
-# ifdef NDEBUG
-	exit(EXIT_FAILURE);
-# else
-	abort();
-# endif
-#else
-	/* TODO: What now? */
-#endif
+void asys_result_format(
+		asys_fixed_buffer_t* buffer, const char* function, const char* path,
+		enum asys_result result) {
+
+	if(path) {
+		asys_string_format(
+				buffer, 0, "err: %s: %s `%s'",
+				function, asys_result_description(result), path);
+	}
+	else {
+		asys_string_format(
+				buffer, 0, "err: %s: %s",
+				function, asys_result_description(result));
+	}
 }
 
 void asys_result_fatal(
 		const char* file, const char* function, enum asys_result result) {
 
-	asys_log_result(file, function, result);
-	asys_abort();
+	asys_result_fatal_path(file, function, 0, result);
+}
+
+void asys_result_fatal_path(
+		const char* file, const char* function, const char* path,
+		enum asys_result result) {
+
+#ifdef ASYS_WIN32
+	static asys_fixed_buffer_t buffer = { 0 };
+
+	asys_result_format(&buffer, function, path, result);
+
+	asys_log(file, buffer);
+	FatalAppExit(0, buffer);
+#else
+	asys_log_result_path(file, function, path, result);
+# ifdef ASYS_STDC
+#  ifdef NDEBUG
+	exit(EXIT_FAILURE);
+#  else
+	abort();
+#  endif
+# else
+	/* TODO: What now? */
+# endif
+#endif
 }
 
 void asys_result_check(
@@ -57,8 +86,7 @@ void asys_result_check_path(
 
 	if(!result) return;
 
-	asys_log_result_path(file, function, path, result);
-	asys_abort();
+	asys_result_fatal_path(file, function, path, result);
 }
 
 #ifdef ASYS_STDC
@@ -75,7 +103,11 @@ enum asys_result asys_result_errno_path(
 					file, "err: %s: %s `%s'",
 					function, strerror(errno), path);
 		}
-		else asys_log(file, "err: %s: %s", function, strerror(errno));
+		else {
+			asys_log(
+					file, "err: %s: %s",
+					function, strerror(errno));
+		}
 	}
 
 	switch(errno) {

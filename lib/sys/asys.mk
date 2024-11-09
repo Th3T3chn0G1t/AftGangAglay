@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
 
+# TODO: Add README to lib/ base to explain these.
+
 # TODO: Windows shouldn't need a C runtime at all if asys is doing its
 #		Job correctly.
 
@@ -18,11 +20,11 @@ ASYS3 = $(ASYS)getopt.c
 
 ASYSH1 = $(ASYSH)base.h $(ASYSH)stream.h $(ASYSH)result.h $(ASYSH)system.h
 ASYSH2 = $(ASYSH)string.h $(ASYSH)memory.h $(ASYSH)error.h $(ASYSH)log.h
-ASYSH3 = $(ASYSH)varargs.h $(ASYSH)file.c $(ASYSH)getopt.c
+ASYSH3 = $(ASYSH)varargs.h $(ASYSH)file.h $(ASYSH)getopt.h $(ASYSH)main.h
 # TODO: `sys' headers.
 
 ASYS_SRC = $(ASYS1) $(ASYS2) $(ASYS3)
-ASYS_HDR = $(ASYSH1) $(ASYSH2)
+ASYS_HDR = $(ASYSH1) $(ASYSH2) $(ASYSH3)
 ASYS_OBJ = $(subst .c,$(OBJ),$(ASYS_SRC))
 
 ASYS_OUT = lib$(SEP)$(LIB)asys$(A)

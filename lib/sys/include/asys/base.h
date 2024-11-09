@@ -11,7 +11,9 @@
 # ifdef _MSC_VER
 #  define ASYS_VC
 # endif
+/* TODO: Review all `_WIN64'/`_WIN32' uses. */
 # ifdef _WIN64
+#  define ASYS_WIN64
 #  define ASYS_LP32
 # endif
 #endif
@@ -21,27 +23,35 @@
 # define ASYS_UNIX
 #endif
 
-#ifdef __STDC__
+#if defined(__STDC__) && !defined(_WIN32)
 # define ASYS_STDC
 #endif
 
 #ifdef __GNUC__
 # define ASYS_GNUC
+# define ASYS_EXTENSION __extension__
+#endif
+
+#ifndef ASYS_EXTENSION
+# define ASYS_EXTENSION
 #endif
 
 #ifdef ASYS_LP32
-# ifdef ASYS_GNUC
-__extension__
+ASYS_EXTENSION typedef long long asys_native_long_t;
+ASYS_EXTENSION typedef unsigned long long asys_native_ulong_t;
+# ifdef ASYS_WIN32
+/*
+ * NOTE: `wsprintf' only supports hex for target native long formatting and
+ * 		 Does not support signed `long long' formatting at all.
+ */
+#  define ASYS_NATIVE_LONG_FORMAT "0x%IX"
+#  define ASYS_NATIVE_ULONG_FORMAT "0x%IX"
+# else
+#  define ASYS_NATIVE_LONG_FORMAT "%lld"
+#  define ASYS_NATIVE_ULONG_FORMAT "%llu"
 # endif
-typedef long long asys_native_long_t;
-# ifdef ASYS_GNUC
-__extension__
-# endif
-typedef unsigned long long asys_native_ulong_t;
-# define ASYS_NATIVE_LONG_FORMAT "%lld"
-# define ASYS_NATIVE_ULONG_FORMAT "%llu"
-# define ASYS_MAKE_NATIVE_LONG(v) (v##LL)
-# define ASYS_MAKE_NATIVE_ULONG(v) (v##ULL)
+# define ASYS_MAKE_NATIVE_LONG(v) (ASYS_EXTENSION v##LL)
+# define ASYS_MAKE_NATIVE_ULONG(v) (ASYS_EXTENSION v##ULL)
 #else
 typedef long asys_native_long_t;
 typedef unsigned long asys_native_ulong_t;
@@ -52,19 +62,8 @@ typedef unsigned long asys_native_ulong_t;
 #endif
 
 #ifdef __has_attribute
-# if __has_attribute(noreturn)
-#  define ASYS_NORETURN __attribute__((noreturn))
-# endif
 # if __has_attribute(fallthrough)
 #  define ASYS_FALLTHROUGH __attribute__((fallthrough))
-# endif
-#endif
-
-#ifndef ASYS_NORETURN
-# ifdef _MSC_VER
-#  define ASYS_NORETURN __declspec(noreturn)
-# else
-#  define ASYS_NORETURN
 # endif
 #endif
 
@@ -77,10 +76,11 @@ typedef unsigned long asys_native_ulong_t;
 typedef unsigned char asys_uchar_t;
 typedef unsigned int asys_uint_t;
 
+typedef asys_native_long_t asys_isize_t;
 typedef asys_native_ulong_t asys_size_t;
 typedef asys_native_long_t asys_offset_t;
 /* TODO: Find a way to switch this to be era-accurate (time32 vs. time64). */
-typedef asys_native_ulong_t asys_time_t;
+typedef asys_native_long_t asys_time_t;
 
 typedef enum asys_bool { ASYS_TRUE = 1, ASYS_FALSE = 0 } asys_bool_t;
 

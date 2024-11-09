@@ -3,8 +3,8 @@
  * Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#ifndef ASYS_UNIX_FILEDETAIL_H
-#define ASYS_UNIX_FILEDETAIL_H
+#ifndef ASYS_UNIX_DETAIL_H
+#define ASYS_UNIX_DETAIL_H
 
 #include <asys/filedata.h>
 

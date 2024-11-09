@@ -7,19 +7,30 @@
 #include <asys/stream.h>
 #include <asys/error.h>
 #include <asys/string.h>
+#include <asys/log.h>
 
-#ifdef ASYS_UNIX
-# include <asys/sys/unix/filedetail.h>
-#endif
+/*
+ * TODO: In dev builds measure noncontiguous reads to provide optimization
+ * 		 Feedback -- backwards seeks are worse.
+ */
 
 enum asys_result asys_stream_new(
 		struct asys_stream* stream, const char* path) {
 
 #ifdef ASYS_WIN32
-	(void) stream;
-	(void) path;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	/*
+	 * TODO: The original open flag constant was just `READ' but for modern VC
+	 * 		 We appear to need `OF_READ'.
+	 */
+	if((stream->hfile = _lopen(path, OF_READ)) == HFILE_ERROR) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result_path(__FILE__, "_lopen", path, result);
+		return result;
+	}
+
+	return ASYS_RESULT_OK;
 #elif defined(ASYS_UNIX)
 	stream->fd = 0;
 
@@ -49,10 +60,15 @@ enum asys_result asys_stream_new_write(
 
 #ifdef AGA_DEVBUILD
 # ifdef ASYS_WIN32
-	(void) stream;
-	(void) path;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	if((stream->hfile = _lcreat(path, 0)) == HFILE_ERROR) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result_path(__FILE__, "_lcreat", path, result);
+		return result;
+	}
+
+	return ASYS_RESULT_OK;
 # elif defined(ASYS_UNIX)
 	stream->fd = 0;
 
@@ -85,9 +101,15 @@ enum asys_result asys_stream_new_write(
 
 enum asys_result asys_stream_delete(struct asys_stream* stream) {
 #ifdef ASYS_WIN32
-	(void) stream;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	if(_lclose(stream->hfile) == HFILE_ERROR) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "_lclose", result);
+		return result;
+	}
+
+	return ASYS_RESULT_OK;
 #elif defined(ASYS_UNIX)
 	if(stream->fd && close(stream->fd) == -1) {
 		return asys_result_errno(__FILE__, "close");
@@ -109,17 +131,14 @@ enum asys_result asys_stream_delete(struct asys_stream* stream) {
 
 asys_stream_native_t asys_stream_native(struct asys_stream* stream) {
 #ifdef ASYS_WIN32
-	(void) stream;
-
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	return stream->hfile;
 #elif defined(ASYS_UNIX)
 	return stream->fd;
 #elif defined(ASYS_STDC)
 	return stream->fp;
 #else
 	(void) stream;
-
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	return -1;
 #endif
 }
 
@@ -132,6 +151,15 @@ static int asys_stream_whence_to_stdio(enum asys_stream_whence whence) {
 		case ASYS_SEEK_CURRENT: return SEEK_CUR;
 	}
 }
+#elif defined(ASYS_WIN32)
+static int asys_stream_whence_to_win32(enum asys_stream_whence whence) {
+	switch(whence) {
+		default: return -1;
+		case ASYS_SEEK_SET: return 0;
+		case ASYS_SEEK_END: return 2;
+		case ASYS_SEEK_CURRENT: return 1;
+	}
+}
 #endif
 
 enum asys_result asys_stream_seek(
@@ -139,11 +167,17 @@ enum asys_result asys_stream_seek(
 		asys_offset_t offset) {
 
 #ifdef ASYS_WIN32
-	(void) stream;
-	(void) whence;
-	(void) offset;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	int seek_whence = asys_stream_whence_to_win32(whence);
+
+	if(_llseek(stream->hfile, offset, seek_whence) == HFILE_ERROR) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "_llseek", result);
+		return result;
+	}
+
+	return ASYS_RESULT_OK;
 #elif defined(ASYS_UNIX)
 	int seek_whence = asys_stream_whence_to_stdio(whence);
 
@@ -169,19 +203,26 @@ enum asys_result asys_stream_seek(
 #endif
 }
 
+/* TODO: This doesn't need to exist with some rework. */
 enum asys_result asys_stream_tell(
 		struct asys_stream* stream, asys_offset_t* offset) {
 
 #ifdef ASYS_WIN32
-	(void) stream;
-	(void) offset;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	if((*offset = _llseek(stream->hfile, 0, 1)) == HFILE_ERROR) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "_llseek", result);
+		return result;
+	}
+
+	return ASYS_RESULT_OK;
 #elif defined(ASYS_UNIX)
-	(void) stream;
-	(void) offset;
+	if((*offset = lseek(stream->fd, 0, SEEK_CUR)) == -1) {
+		return asys_result_errno(__FILE__, "lseek");
+	}
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	return ASYS_RESULT_OK;
 #elif defined(ASYS_STDC)
 	long result;
 
@@ -204,12 +245,19 @@ enum asys_result asys_stream_read(
 		asys_size_t count) {
 
 #ifdef ASYS_WIN32
-	(void) stream;
-	(void) read_count;
-	(void) buffer;
-	(void) count;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	long read_result = _hread(stream->hfile, buffer, count);
+	if(read_count) *read_count = read_result;
+
+	if(read_result == -1L) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "_hread", result);
+		return result;
+	}
+	else if(read_result < (long) count) return ASYS_RESULT_EOF;
+
+	return ASYS_RESULT_OK;
 #elif defined(ASYS_UNIX)
 	ssize_t result = read(stream->fd, buffer, count);
 	if(read_count) *read_count = (asys_size_t) result;
@@ -247,11 +295,48 @@ enum asys_result asys_stream_attribute(
 		union asys_file_attribute* attribute) {
 
 #ifdef ASYS_WIN32
-	(void) stream;
-	(void) type;
-	(void) attribute;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	if(type == ASYS_FILE_TYPE) {
+		attribute->type = ASYS_FILE_REGULAR;
+		return ASYS_RESULT_OK;
+	}
+
+	switch(type) {
+		default: return ASYS_RESULT_BAD_PARAM;
+
+		case ASYS_FILE_MODIFIED: {
+			/*
+			 * TODO: The era-accurate call (`_getftime') no longer exists and
+			 * 		 The modern equivalent takes `HANDLE' (`void*') not `HFILE'
+			 * 		 (`int').
+			 */
+			/*
+			if(!GetFileTime(stream->hfile)) {
+				result = ASYS_RESULT_ERROR;
+				asys_log_result_path(__FILE__, "GetFileTime", result);
+				return result;
+			}
+			 */
+			attribute->modified = ASYS_MAKE_NATIVE_LONG(0);
+
+			return ASYS_RESULT_OK;
+		}
+
+		case ASYS_FILE_LENGTH: {
+			long length;
+
+			if((length = _filelength(stream->hfile)) == -1) {
+				result = ASYS_RESULT_ERROR;
+				asys_log_result(__FILE__, "_filelength", result);
+				return result;
+			}
+
+			attribute->length = length;
+
+			return ASYS_RESULT_OK;
+		}
+	}
 #elif defined(ASYS_UNIX)
 	struct stat buffer;
 
@@ -280,11 +365,15 @@ enum asys_result asys_stream_write(
 
 #ifdef AGA_DEVBUILD
 # ifdef ASYS_WIN32
-	(void) stream;
-	(void) buffer;
-	(void) count;
+	enum asys_result result;
 
-	return ASYS_RESULT_NOT_IMPLEMENTED;
+	if(_hwrite(stream->hfile, buffer, count) == -1L) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "_hwrite", result);
+		return result;
+	}
+
+	return ASYS_RESULT_OK;
 # elif defined(ASYS_UNIX)
 	if(write(stream->fd, buffer, count) == -1) {
 		return asys_result_errno(__FILE__, "write");
@@ -355,6 +444,7 @@ enum asys_result asys_stream_write_format_variadic(
 #else
 	(void) stream;
 	(void) format;
+	(void) list;
 
 	return ASYS_RESULT_NOT_IMPLEMENTED;
 #endif

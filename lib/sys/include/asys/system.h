@@ -10,6 +10,14 @@
 
 #ifdef ASYS_WIN32
 # include <windows.h>
+# include <commdlg.h>
+# include <dos.h>
+# include <io.h> /* TODO: Did this exist? */
+/*
+ * TODO: This appears to be a modern compat header. Can we examine it for help
+ * 		 In using era-accurate alternatives?
+ */
+# include <windowsx.h>
 #endif
 
 #ifdef ASYS_UNIX
@@ -31,14 +39,9 @@
 # include <ctype.h>
 # include <errno.h>
 # include <signal.h>
-# ifdef AGA_WANT_MATH
-#  include <math.h>
-#  ifndef M_PI /* TODO: Remove reliance on this */
-#   define M_PI (3.14159265358979323846)
-#  endif
-# endif
 #endif
 
 #include <asys/varargs.h>
+#include <asys/detail.h>
 
 #endif
