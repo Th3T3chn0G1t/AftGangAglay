@@ -247,6 +247,7 @@ enum asys_result asys_stream_read(
 #ifdef ASYS_WIN32
 	enum asys_result result;
 
+	/* TODO: Need to detect EOF for Python readline. */
 	long read_result = _hread(stream->hfile, buffer, count);
 	if(read_count) *read_count = read_result;
 

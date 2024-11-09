@@ -134,7 +134,10 @@ enum asys_result aga_resource_pack_new(
 		resource->size = (asys_size_t) size;
 	}
 
-	asys_log(__FILE__, "Processed `%zu' resource entries", pack->count);
+	asys_log(
+			__FILE__,
+			"Processed `" ASYS_NATIVE_ULONG_FORMAT "' resource entries",
+			pack->count);
 
 	return ASYS_RESULT_OK;
 
@@ -163,8 +166,9 @@ enum asys_result aga_resource_pack_delete(struct aga_resource_pack* pack) {
 #ifndef NDEBUG
 	if(pack->outstanding_refs) {
 		asys_log(
-				__FILE__, "warn: `%zu' outstanding refs held in freed respack",
-				pack->outstanding_refs);
+				__FILE__,
+				"warn: `" ASYS_NATIVE_ULONG_FORMAT "' outstanding refs held in"
+				" freed respack", pack->outstanding_refs);
 	}
 #endif
 

@@ -3,13 +3,11 @@
  * Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#ifndef AGA_W_MIDI_H
-#define AGA_W_MIDI_H
+#ifndef AGA_WIN32_MIDI_H
+#define AGA_WIN32_MIDI_H
 
 #include <asys/log.h>
-
-#define AGA_WANT_WINDOWS_H
-#include <aga/win32.h>
+#include <asys/system.h>
 
 static enum asys_result aga_mmsys_result(unsigned err) {
 	switch(err) {
@@ -78,7 +76,7 @@ enum asys_result aga_midi_new(
 		free(hdr);
 
 		return result;
-	};
+	}
 }
 
 enum asys_result aga_midi_delete(

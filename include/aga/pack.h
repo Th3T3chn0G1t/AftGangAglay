@@ -15,6 +15,9 @@
 
 struct aga_resource_pack;
 
+typedef float aga_model_tail_t[6];
+typedef asys_uint_t aga_image_tail_t;
+
 struct aga_resource_pack_header {
 	asys_uint_t size;
 	asys_uint_t magic;
@@ -41,7 +44,12 @@ struct aga_resource_pack {
 	struct asys_stream stream;
 	asys_size_t data_offset;
 
-	/* TODO: This should eventually be a hashmap. */
+	/*
+	 * TODO: This should eventually be a hashmap. Windows has `GetAtom' etc. as
+	 * 		 As a sort of built-in hashmap system -- does X allow arbitrary use
+	 * 		 Of Atoms (and is it wise to do so?). If so, then add natively to
+	 * 		 Python to avoid re-creating loads of strings.
+	 */
 	struct aga_resource* resources;
 	asys_size_t count; /* Alias for `pack->root.children->len'. */
 

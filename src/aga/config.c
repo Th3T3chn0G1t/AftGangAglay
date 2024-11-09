@@ -40,6 +40,17 @@ struct aga_sgml_structured {
 void SGML_character(HTStream*, char);
 void SGML_free(HTStream*);
 
+static void aga_sgml_free(struct aga_sgml_structured*);
+static void aga_sgml_abort(struct aga_sgml_structured*, HTError);
+static void aga_sgml_put_character(struct aga_sgml_structured*, char);
+static void aga_sgml_put_string(HTStructured*, const char*);
+static void aga_sgml_write(HTStructured*, const char*, unsigned);
+static void aga_sgml_start_element(
+		struct aga_sgml_structured*, int, const HTBool*, char**);
+
+static void aga_sgml_end_element(struct aga_sgml_structured*, int);
+static void aga_sgml_put_entity(HTStructured*, int);
+
 static attr aga_global_sgml_item_attributes[] = {
 		{ "name" }, /* AGA_ITEM_NAME */
 		{ "type" } /* AGA_ITEM_TYPE */
@@ -69,6 +80,31 @@ static SGML_dtd aga_global_sgml_dtd = {
 		aga_global_sgml_tags, ASYS_LENGTH(aga_global_sgml_tags), 0, 0
 };
 
+static HTStructuredClass aga_global_sgml_class[1] = {
+		{
+				"aga-sgml",
+
+				(HTStructuredFree) aga_sgml_free,
+				(HTStructuredAbort) aga_sgml_abort,
+
+				(HTStructuredPutCharacter) aga_sgml_put_character,
+				(HTStructuredPutString) aga_sgml_put_string,
+
+				(HTStructuredWrite) aga_sgml_write,
+
+				(HTStructuredStartElement) aga_sgml_start_element,
+				(HTStructuredEndElement) aga_sgml_end_element,
+
+				(HTStructuredPutEntity) aga_sgml_put_entity
+		}
+};
+
+static struct aga_sgml_structured aga_global_sgml_structured = {
+		aga_global_sgml_class,
+		{ 0 },
+		0
+};
+
 static enum asys_result aga_sgml_push(
 		struct aga_sgml_structured* s, struct aga_config_node* node) {
 
@@ -78,6 +114,11 @@ static enum asys_result aga_sgml_push(
 	if(s->depth > AGA_CONFIG_MAX_DEPTH) return ASYS_RESULT_OOM;
 
 	s->stack[s->depth++] = node;
+
+	/*asys_log(
+			__FILE__,
+			"Pushing config node `%p' at depth `" ASYS_NATIVE_ULONG_FORMAT "'",
+			node, s->depth);*/
 
 	return ASYS_RESULT_OK;
 }
@@ -92,7 +133,18 @@ static void aga_sgml_abort(struct aga_sgml_structured* me, HTError e) {
 }
 
 static void aga_sgml_put_character(struct aga_sgml_structured* me, char c) {
-	struct aga_config_node* node = me->stack[me->depth - 1];
+	struct aga_config_node* node;
+
+	if(!me->depth) {
+		asys_log(
+				__FILE__,
+				"warn: aga_sgml_put_character: Read `%c' with empty node "
+				"stack", c);
+
+		return;
+	}
+
+	node = me->stack[me->depth - 1];
 
 	/*asys_log(__FILE__, "aga_sgml_put_character: %c", c);*/
 
@@ -119,15 +171,27 @@ static void aga_sgml_write(HTStructured* me, const char* str, unsigned len) {
 	(void) len;
 }
 
-void aga_sgml_start_element(
+static void aga_sgml_start_element(
 		struct aga_sgml_structured* me, int element_number,
 		const HTBool* attribute_present, char** attribute_value) {
 
-	struct aga_config_node* parent = me->stack[me->depth - 1];
+	struct aga_config_node* parent;
 	struct aga_config_node* node;
 	enum asys_result result;
 
-	asys_size_t sz = ++parent->len * sizeof(struct aga_config_node);
+	asys_size_t sz;
+
+	if(!me->depth) {
+		asys_log(
+				__FILE__,
+				"warn: aga_sgml_start_element: Start element type `%s' with "
+				"empty node stack", aga_global_sgml_tags[element_number].name);
+
+		return;
+	}
+
+	parent = me->stack[me->depth - 1];
+	sz = ++parent->len * sizeof(struct aga_config_node);
 
 	/*asys_log(
 			__FILE__, "aga_sgml_start_element: %d -> %s",
@@ -198,13 +262,25 @@ void aga_sgml_start_element(
 	}
 }
 
-void aga_sgml_end_element(struct aga_sgml_structured* me, int element_number) {
+static void aga_sgml_end_element(
+		struct aga_sgml_structured* me, int element_number) {
+
 	asys_size_t i;
 
-	struct aga_config_node* node = me->stack[me->depth - 1];
-	char* string = node->data.string;
+	struct aga_config_node* node;
+	char* string;
 
-	(void) element_number;
+	if(!me->depth) {
+		asys_log(
+				__FILE__,
+				"warn: aga_sgml_end_element: End element type `%s' with empty "
+				"node stack", aga_global_sgml_tags[element_number]);
+
+		return;
+	}
+
+	node = me->stack[me->depth - 1];
+	string = node->data.string;
 
 	/*asys_log(
 			__FILE__, "aga_sgml_end_element: %d -> %s",
@@ -262,6 +338,11 @@ void aga_sgml_end_element(struct aga_sgml_structured* me, int element_number) {
 	}
 
 	me->depth--;
+
+	/*asys_log(
+			__FILE__,
+			"Popping config node `%p' at depth `" ASYS_NATIVE_ULONG_FORMAT "'",
+			node, me->depth);*/
 }
 
 
@@ -274,23 +355,6 @@ void HTOOM(const char* file, const char* func) {
 	asys_result_fatal(file, func, ASYS_RESULT_OOM);
 }
 
-static HTStructuredClass aga_global_sgml_class = {
-		"aga-sgml",
-
-		(HTStructuredFree) aga_sgml_free,
-		(HTStructuredAbort) aga_sgml_abort,
-
-		(HTStructuredPutCharacter) aga_sgml_put_character,
-		(HTStructuredPutString) aga_sgml_put_string,
-
-		(HTStructuredWrite) aga_sgml_write,
-
-		(HTStructuredStartElement) aga_sgml_start_element,
-		(HTStructuredEndElement) aga_sgml_end_element,
-
-		(HTStructuredPutEntity) aga_sgml_put_entity
-};
-
 /*
  * TODO: Derive when to end the stream when the `<root>' element closes instead
  * 		 Of needing to provide a `count'? Lets `aga_build' skip a few `stat's.
@@ -299,26 +363,24 @@ enum asys_result aga_config_new(
 		struct asys_stream* stream, asys_size_t count,
 		struct aga_config_node* root) {
 
-	static struct aga_sgml_structured structured = {
-			&aga_global_sgml_class,
-			{ 0 },
-			0
-	};
-
 	enum asys_result result;
 
 	HTStream* s;
 	asys_size_t i;
 
-	structured.depth = 0;
+#if !defined(AGA_DEVBUILD) && !defined(NDEBUG)
+	if(count == AGA_CONFIG_EOF) {
+		asys_log(__FILE__, "`AGA_CONFIG_EOF' is only available in dev builds");
+		return ASYS_RESULT_BAD_PARAM;
+	}
+#endif
+
 	asys_memory_zero(root, sizeof(struct aga_config_node));
 
-	result = aga_sgml_push(&structured, root);
+	result = aga_sgml_push(&aga_global_sgml_structured, root);
 	if(result) return result;
 
-	structured.class = &aga_global_sgml_class;
-
-	s = SGML_new(&aga_global_sgml_dtd, (HTStructured*) &structured);
+	s = SGML_new(&aga_global_sgml_dtd, (void*) &aga_global_sgml_structured);
 
 	for(i = 0; i < count; ++i) {
 		char c;

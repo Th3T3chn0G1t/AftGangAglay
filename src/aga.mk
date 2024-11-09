@@ -8,26 +8,27 @@ AGAN = src$(SEP)agan$(SEP)
 AGANH = include$(SEP)agan$(SEP)
 
 # aga
-AGA1 = $(AGA)config.c $(AGA)draw.c $(AGA)midi.c $(AGA)pack.c
-AGA2 = $(AGA)python.c $(AGA)script.c $(AGA)startup.c
-AGA3 = $(AGA)sound.c $(AGA)win32.c $(AGA)aga.c $(AGA)window.c
-AGA4 = $(AGA)render.c $(AGA)build.c $(AGA)graph.c
+AGA1 = $(AGA)config.c $(AGA)draw.c $(AGA)midi.c $(AGA)pack.c $(AGA)graph.c
+AGA2 = $(AGA)python.c $(AGA)script.c $(AGA)startup.c $(AGA)render.c
+AGA3 = $(AGA)sound.c $(AGA)aga.c $(AGA)window.c $(AGA)build.c
 # agan
-AGA5 = $(AGAN)draw.c $(AGAN)agan.c $(AGAN)object.c $(AGAN)utility.c
-AGA6 = $(AGAN)math.c $(AGAN)editor.c $(AGAN)io.c
+AGA4 = $(AGAN)draw.c $(AGAN)agan.c $(AGAN)object.c $(AGAN)utility.c $(AGAN)io.c
+AGA5 = $(AGAN)math.c $(AGAN)editor.c
+
+# TODO: Temporary.
+AGA6 = $(ASYS)main.c
 
 # aga
-AGAH1 = $(AGAH)config.h $(AGAH)gl.h $(AGAH)script.h
+AGAH1 = $(AGAH)config.h $(AGAH)gl.h $(AGAH)script.h $(AGAH)pack.h $(AGAH)draw.h
 AGAH2 = $(AGAH)python.h $(AGAH)sound.h $(AGAH)startup.h $(AGAH)render.h
-AGAH3 = $(AGAH)win32.h $(AGAH)window.h $(AGAH)pack.h $(AGAH)draw.h
-AGAH4 = $(AGAH)graph.h
+AGAH3 = $(AGAH)window.h $(AGAH)graph.h
 # agan
-AGAH5 = $(AGANH)agan.h $(AGANH)object.h $(AGANH)draw.h $(AGAH)render.h
-AGAH6 = $(AGANH)utility.h $(AGANH)io.h
+AGAH4 = $(AGANH)agan.h $(AGANH)object.h $(AGANH)draw.h $(AGAH)render.h
+AGAH5 = $(AGANH)utility.h $(AGANH)io.h
 # TODO: `sys' headers.
 
 AGA_SRC = $(AGA1) $(AGA2) $(AGA3) $(AGA4) $(AGA5) $(AGA6)
-AGA_HDR = $(AGAH1) $(AGAH2) $(AGAH3) $(AGAH4) $(AGAH5) $(AGAH6)
+AGA_HDR = $(AGAH1) $(AGAH2) $(AGAH3) $(AGAH4) $(AGAH5)
 AGA_OBJ = $(subst .c,$(OBJ),$(AGA_SRC))
 
 AGA_OUT = $(AGA)aga$(EXE)
@@ -43,10 +44,10 @@ $(AGA_OUT): $(AGA_OBJ)
 
 $(AGA)script.c: $(PYGRAM)
 
-$(AGA)window$(OBJ): $(AGA)xwindow.h
-$(AGA)window$(OBJ): $(AGA)win32window.h
+$(AGA)window$(OBJ): $(AGA)sys$(SEP)x$(SEP)window.h
+$(AGA)window$(OBJ): $(AGA)sys$(SEP)win32$(SEP)window.h
 
-$(AGA)midi$(OBJ): $(AGA)win32midi.h
+$(AGA)midi$(OBJ): $(AGA)sys$(SEP)win32$(SEP)midi.h
 
 clean_aga:
 	$(RM) $(AGA_OBJ) $(AGA_OUT)

@@ -21,6 +21,7 @@
 #include <asys/log.h>
 #include <asys/error.h>
 #include <asys/string.h>
+#include <asys/main.h>
 
 static enum asys_result aga_put_default(void) {
 	/*
@@ -44,7 +45,7 @@ static enum asys_result aga_put_default(void) {
 	return aga_render_text_format(0.05f, 0.2f, text_color, str2);
 }
 
-int main(int argc, char** argv) {
+enum asys_result asys_main(struct asys_main_data* main_data) {
 	enum asys_result result;
 
 	struct aga_settings opts;
@@ -93,7 +94,7 @@ int main(int argc, char** argv) {
 
 	asys_log(__FILE__, "Breathing in the chemicals...");
 
-	result = aga_settings_new(&opts, argc, argv);
+	result = aga_settings_new(&opts, main_data);
 	asys_log_result(__FILE__, "aga_settings_new", result);
 
 #ifdef AGA_DEVBUILD
@@ -119,13 +120,14 @@ int main(int argc, char** argv) {
 	asys_result_check(__FILE__, "aga_keymap_new", result);
 
 	if(do_prof) {
-		result = aga_graph_new(&prof, &env, argc, argv);
+		result = aga_graph_new(&prof, &env, main_data);
 		if(result) do_prof = ASYS_FALSE;
 	}
 
 	result = aga_window_new(
-			opts.width, opts.height, opts.title,
-			&env, &win, ASYS_TRUE, argc, argv);
+			opts.width, opts.height, opts.title, &env, &win, ASYS_TRUE,
+			main_data);
+
 	asys_result_check(__FILE__, "aga_window_new", result);
 
 	result = aga_renderer_string(&gl_version);

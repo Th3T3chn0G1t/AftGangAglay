@@ -60,6 +60,9 @@ ifdef WINDOWS
 
 	GL_LDLIBS = -lopengl32 -lglu32 -lgdi32 -lshell32 -luser32 -lwinmm
 	GL_LDLIBS += -lcomdlg32
+
+	# TODO: Does this work under clang invoking LINK?
+	SET_LDFLAGS += -Wl,-subsystem,windows
 else
 	LIB = lib
 	OBJ = .o

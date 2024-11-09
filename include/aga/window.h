@@ -15,11 +15,13 @@
 #include <asys/base.h>
 #include <asys/result.h>
 
-#ifdef _WIN32
+#ifdef ASYS_WIN32
 # include <aga/sys/win32/windowdata.h>
 #else
 # include <aga/sys/x/windowdata.h>
 #endif
+
+struct asys_main_data;
 
 struct aga_keymap {
     asys_bool_t* states;
@@ -69,7 +71,7 @@ enum asys_result aga_keymap_lookup(struct aga_keymap*, unsigned, asys_bool_t*);
 enum asys_result aga_window_new(
 		asys_size_t, asys_size_t, const char*,
 		struct aga_window_device*, struct aga_window*,
-        asys_bool_t, int, char**);
+        asys_bool_t, struct asys_main_data*);
 
 enum asys_result aga_window_delete(
 		struct aga_window_device*, struct aga_window*);
@@ -86,11 +88,15 @@ enum asys_result aga_window_select(
  * 		 (-1, 0) and would not hover any other Windows to the left of `win'.
  */
 enum asys_result aga_window_set_cursor(
-		struct aga_window_device*, struct aga_window*, asys_bool_t, asys_bool_t);
+		struct aga_window_device*, struct aga_window*, asys_bool_t,
+		asys_bool_t);
 
-enum asys_result aga_window_swap(struct aga_window_device*, struct aga_window*);
+enum asys_result aga_window_swap(
+		struct aga_window_device*, struct aga_window*);
 
-enum asys_result aga_dialog(const char*, const char*, asys_bool_t*, asys_bool_t);
+enum asys_result aga_dialog(
+		const char*, const char*, asys_bool_t*, asys_bool_t);
+
 enum asys_result aga_dialog_file(char**);
 enum asys_result aga_shell_open(const char*);
 

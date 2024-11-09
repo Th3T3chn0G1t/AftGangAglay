@@ -48,9 +48,9 @@ enum asys_result aga_pyresult(enum py_result result) {
 	switch(result) {
 		default: return ASYS_RESULT_ERROR;
 		case PY_RESULT_OK: return ASYS_RESULT_OK;
-		case PY_RESULT_EOF: return ASYS_RESULT_BAD_PARAM;
-		case PY_RESULT_TOKEN: return ASYS_RESULT_BAD_PARAM;
-		case PY_RESULT_SYNTAX: return ASYS_RESULT_BAD_PARAM;
+		case PY_RESULT_EOF: return ASYS_RESULT_EOF;
+		case PY_RESULT_TOKEN: return ASYS_RESULT_INVALID_TOKEN;
+		case PY_RESULT_SYNTAX: return ASYS_RESULT_BAD_SYNTAX;
 		case PY_RESULT_OOM: return ASYS_RESULT_OOM;
 		case PY_RESULT_DONE: return ASYS_RESULT_OK;
 	}
@@ -98,8 +98,8 @@ static enum asys_result aga_script_compile(
 	if(!(module = py_module_add(env, "__main__"))) return ASYS_RESULT_ERROR;
 
 	py_result = py_parse_file(
-				stream, script, &py_grammar, PY_GRAMMAR_FILE_INPUT, 0, 0,
-				&node);
+					stream, script, &py_grammar, PY_GRAMMAR_FILE_INPUT, 0, 0,
+					&node);
 
 	if(py_result != PY_RESULT_DONE) return aga_pyresult(py_result);
 

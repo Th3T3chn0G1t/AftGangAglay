@@ -10,6 +10,8 @@
 
 #include <apro.h>
 
+struct asys_main_data;
+
 struct aga_graph {
 	struct aga_window window;
 
@@ -26,7 +28,7 @@ struct aga_graph {
 };
 
 enum asys_result aga_graph_new(
-		struct aga_graph*, struct aga_window_device*, int, char**);
+		struct aga_graph*, struct aga_window_device*, struct asys_main_data*);
 
 enum asys_result aga_graph_delete(struct aga_graph*, struct aga_window_device*);
 

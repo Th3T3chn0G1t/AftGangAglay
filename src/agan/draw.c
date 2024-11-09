@@ -16,6 +16,11 @@
 
 #include <apro.h>
 
+/*
+ * TODO: Implement GL-native pick buffers so we can get vertex colouration
+ * 		 Back.
+ */
+
 enum asys_result agan_draw_register(struct py_env* env) {
 	enum asys_result result;
 

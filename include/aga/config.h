@@ -17,6 +17,11 @@
 
 struct asys_stream;
 
+/*
+ * Read config until EOF instead of by length. Only available in dev builds.
+ */
+#define AGA_CONFIG_EOF ((asys_size_t) -1)
+
 enum aga_config_node_type {
 	AGA_NONE,
 	AGA_STRING,

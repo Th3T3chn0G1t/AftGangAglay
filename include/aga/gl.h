@@ -17,17 +17,8 @@
 /*
  * This is super annoying as it leaks a load of garbage into scope.
  * `windows.h' is needed for declaration attributes.
- * `stddef.h' is needed for `wchar_t'.
  */
-# ifndef AGA_WGL_SUPPRESS_AUX
-#  ifndef _WCHAR_T_DEFINED
-#   include <aga/std.h>
-#  endif
-
-#  define AGA_WANT_WINDOWS_H
-#  include <aga/win32.h>
-# endif
-
+# include <windows.h>
 # include <GL/gl.h>
 # include <GL/glu.h>
 

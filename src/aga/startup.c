@@ -10,12 +10,13 @@
 #include <asys/log.h>
 #include <asys/getopt.h>
 #include <asys/memory.h>
+#include <asys/main.h>
 
 enum asys_result aga_settings_new(
-		struct aga_settings* opts, int argc, char** argv) {
+		struct aga_settings* opts, struct asys_main_data* main_data) {
 
 	if(!opts) return ASYS_RESULT_BAD_PARAM;
-	if(!argv) return ASYS_RESULT_BAD_PARAM;
+	if(!main_data) return ASYS_RESULT_BAD_PARAM;
 
 #ifdef AGA_DEVBUILD
 	opts->compile = ASYS_FALSE;
@@ -53,14 +54,18 @@ enum asys_result aga_settings_new(
 		;
 
 		int o;
-		while((o = getopt(argc, argv, "hcf:s:A:D:C:v")) != -1) {
+		while(1) {
+			o = getopt(main_data->argc, main_data->argv, "hcf:s:A:D:C:v");
+			if(o == -1) break;
+
 			switch(o) {
 				default:
 #ifdef AGA_DEVBUILD
 					;help:
 #endif
 				{
-					asys_log(__FILE__, helpmsg, argv[0], argv[0]);
+					const char* program = main_data->argv[0];
+					asys_log(__FILE__, helpmsg, program, program);
 					goto break2;
 				}
 #ifdef AGA_DEVBUILD

@@ -11,7 +11,7 @@
 
 enum asys_result aga_graph_new(
 		struct aga_graph* graph, struct aga_window_device* env,
-		int argc, char** argv) {
+		struct asys_main_data* main_data) {
 
 #ifdef AGA_DEVBUILD
 	enum asys_result result;
@@ -20,7 +20,7 @@ enum asys_result aga_graph_new(
 
 	result = aga_window_new(
 				1280, 480, "Profile", env, &graph->window, ASYS_TRUE,
-				argc, argv);
+				main_data);
 
 	if(result) return result;
 
@@ -42,8 +42,7 @@ enum asys_result aga_graph_new(
 #else
 	(void) graph;
 	(void) env;
-	(void) argc;
-	(void) argv;
+	(void) main_data;
 #endif
 
 	return ASYS_RESULT_OK;

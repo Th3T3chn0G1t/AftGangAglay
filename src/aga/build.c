@@ -36,6 +36,10 @@ enum aga_file_kind {
 
 	AGA_KIND_TIFF,
 	AGA_KIND_OBJ,
+	/*
+	 * TODO: We can precompile a more efficiently serialised conftree in
+	 * 		 Non-Debug/Dev builds.
+	 */
 	AGA_KIND_SGML,
 	AGA_KIND_PY,
 	AGA_KIND_WAV,
@@ -60,15 +64,11 @@ static enum asys_result aga_build_open_config(
 	enum asys_result result;
 
 	struct asys_stream stream;
-	union asys_file_attribute attribute;
 
 	result = asys_stream_new(&stream, path);
 	if(result) return result;
 
-	result = asys_stream_attribute(&stream, ASYS_FILE_LENGTH, &attribute);
-	if(result) goto cleanup;
-
-	result = aga_config_new(&stream, attribute.length, root);
+	result = aga_config_new(&stream, AGA_CONFIG_EOF, root);
 	if(result) goto cleanup;
 
 	result = asys_stream_delete(&stream);
@@ -422,18 +422,17 @@ static enum asys_result aga_build_conf_file(
             if(result) return result; \
 		} while(0)
 	{
-		/*
-		 * TODO: Sort out:
-		 *		  - `%zu' did not exist until C99.
-		 *		  - `%llu' should not be used on non "modern Windows" machines.
-		 */
-		agab_(2, "Offset", "Integer", "%zu", *offset);
+		agab_(2, "Offset", "Integer", ASYS_NATIVE_ULONG_FORMAT, *offset);
 
+		/*
+		 * TODO: If we build as we go we can avoid loads of file open/close
+		 * 		 Operations and entirely eliminate file length gets.
+		 */
 		result = asys_path_attribute(buffer, ASYS_FILE_LENGTH, &attr);
 		if(result) return result;
 
 		*offset += attr.length;
-		agab_(2, "Size", "Integer", "%zu", attr.length);
+		agab_(2, "Size", "Integer", ASYS_NATIVE_ULONG_FORMAT, attr.length);
 
 		switch(kind) {
 			default: break;
@@ -443,30 +442,28 @@ static enum asys_result aga_build_conf_file(
 			 * 		 Top of this file.
 			 */
 			case AGA_KIND_TIFF: {
-				asys_uint_t width;
+				aga_image_tail_t tail;
 
-				result = asys_path_tail(buffer, &width, sizeof(asys_uint_t));
+				result = asys_path_tail(buffer, &tail, sizeof(tail));
 				if(result) return result;
 
-				*offset -= sizeof(width);
-				agab_(2, "Width", "Integer", "%u", width);
+				agab_(2, "Width", "Integer", "%u", tail);
 
 				break;
 			}
 
 			case AGA_KIND_OBJ: {
-				float extents[6];
+				aga_model_tail_t tail;
 
-				result = asys_path_tail(buffer, extents, sizeof(float[6]));
+				result = asys_path_tail(buffer, tail, sizeof(tail));
 				if(result) return result;
 
-				*offset -= sizeof(extents);
-				agab_(2, "MinX", "Float", "%f", extents[0]);
-				agab_(2, "MinY", "Float", "%f", extents[1]);
-				agab_(2, "MinZ", "Float", "%f", extents[2]);
-				agab_(2, "MaxX", "Float", "%f", extents[3]);
-				agab_(2, "MaxY", "Float", "%f", extents[4]);
-				agab_(2, "MaxZ", "Float", "%f", extents[5]);
+				agab_(2, "MinX", "Float", "%f", tail[0]);
+				agab_(2, "MinY", "Float", "%f", tail[1]);
+				agab_(2, "MinZ", "Float", "%f", tail[2]);
+				agab_(2, "MaxX", "Float", "%f", tail[3]);
+				agab_(2, "MaxY", "Float", "%f", tail[4]);
+				agab_(2, "MaxZ", "Float", "%f", tail[5]);
 
 				/*
 				 * Mark model as version 2 -- we started discarding model
@@ -526,10 +523,7 @@ static enum asys_result aga_build_pack_file(
 
 	enum asys_result result;
 
-	union asys_file_attribute attribute;
-
 	struct asys_stream in;
-	asys_size_t count;
 
 	/* Skip input files which don't match kind. */
 	if(!aga_build_path_matches_kind(path, kind)) return ASYS_RESULT_OK;
@@ -543,24 +537,11 @@ static enum asys_result aga_build_pack_file(
 		asys_string_concatenate(buffer, AGA_RAW_SUFFIX);
 	}
 
-	if((result = asys_path_attribute(buffer, ASYS_FILE_LENGTH, &attribute))) {
-		return result;
-	}
-
-	count = attribute.length;
-
-	switch(kind) {
-		default: break;
-
-		/* TODO: Structurize file tails. */
-		case AGA_KIND_TIFF: count -= sizeof(asys_uint_t); break;
-		case AGA_KIND_OBJ: count -= sizeof(float[6]); break;
-	}
-
+	/* TODO: Should we have a path-wise copy? */
 	result = asys_stream_new(&in, buffer);
 	if(result) return result;
 
-	result = asys_stream_splice(stream, &in, count);
+	result = asys_stream_splice(stream, &in, ASYS_COPY_ALL);
 	if(result) goto cleanup;
 
 	result = asys_stream_delete(&in);
@@ -706,7 +687,11 @@ static void aga_tiff_warning(
 }
 
 /* TODO: Lots of leaky error states in here and the above statics. */
-/* TODO: Extra verbose per-file output if set to verbose output. */
+/*
+ * TODO: Extra verbose per-file output if set to verbose output. Make
+ * 		 Verbose outputs use a `verb:' logging tag so the logger can filter
+ * 		 Based on the `-v' flag instead of needing to check everywhere.
+ */
 enum asys_result aga_build(struct aga_settings* opts) {
 	static const char* input = "Input";
 

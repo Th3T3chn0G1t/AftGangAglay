@@ -10,6 +10,7 @@
 
 #include <asys/result.h>
 
+struct asys_main_data;
 struct aga_resource_pack;
 
 struct aga_settings {
@@ -46,7 +47,8 @@ struct aga_settings {
 };
 
 /* NOTE: We try to leave sensible defaults in `opts' during failure states. */
-enum asys_result aga_settings_new(struct aga_settings*, int, char**);
+enum asys_result aga_settings_new(
+		struct aga_settings*, struct asys_main_data*);
 
 enum asys_result aga_settings_parse_config(
 		struct aga_settings*, struct aga_resource_pack*);

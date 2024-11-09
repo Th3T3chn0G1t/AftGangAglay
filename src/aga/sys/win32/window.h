@@ -6,39 +6,52 @@
 #ifndef AGA_WIN32_WINDOW_H
 #define AGA_WIN32_WINDOW_H
 
-/*
- * NOTE: Everything in here is from the future! Microsoft only started
- * 		 Supporting OpenGL in 1997-ish. Unfortunately shipping without Windows
- * 		 Support would be a bit of a death sentence so here we are. Apparently
- * 		 NT3.5 had GL support so we may need to look at that.
- */
+#include <asys/system.h>
+#include <asys/main.h>
+#include <asys/memory.h>
+#include <asys/log.h>
 
 /*
- * TODO: Restructure `src/' tree to use `sys/' paths for x vs. win32 the same
- * 		 As `include/'.
+ * NOTE: Consumer Windows only started supporting OpenGL in 1997-ish.
  */
-
-#define AGA_WANT_WINDOWS_H
-
-#include <aga/win32.h>
+/*
+ * TODO: Separate WGL from period-accurate win32.
+ */
 
 #define AGA_CLASS_NAME ("AftGangAglay")
 
-#define AGAW_KEYMAX (0xFF)
+#define AGA_KEY_MAX (0xFF)
+
+static void aga_set_window_long(void* hwnd, asys_native_long_t value) {
+#ifdef ASYS_WIN64
+	SetWindowLongPtr(hwnd, 0, value);
+#else
+	SetWindowLong(hwnd, 0, value);
+#endif
+}
+
+static asys_native_long_t aga_get_window_long(void* hwnd) {
+#ifdef ASYS_WIN64
+	return GetWindowLongPtr(hwnd, 0);
+#else
+	return GetWindowLong(hwnd, 0);
+#endif
+}
 
 static const PIXELFORMATDESCRIPTOR pixel_format = {
 		sizeof(PIXELFORMATDESCRIPTOR), 1,
 		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
-/*
- * TODO: Broader palletization support -- user-specified palletes etc.
- * 		 See
- * 		 https://learn.microsoft.com/en-us/windows/win32/opengl/color-index-mode-and-windows-palette-management.
- */
+		/*
+		 * TODO: Broader palletization support -- user-specified palletes etc.
+		 * 		 See
+		 * 		 https://learn.microsoft.com/en-us/windows/win32/opengl/color-index-mode-and-windows-palette-management.
+		 */
 #ifdef AGA_PALLETIZE
 		PFD_TYPE_COLORINDEX,
 #else
 		PFD_TYPE_RGBA,
 #endif
+		/* TODO: Configurable bitdepth. */
 		24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0,
 		PFD_MAIN_PLANE,
 		0, 0, 0, 0
@@ -64,32 +77,23 @@ static void aga_setbuttondown(struct aga_buttons* b, enum aga_button t) {
  * TODO: Attach winpack to all windows so poll can be window-independent?
  * 		 Current setup does not handle multiwindow well -- especially teardown.
  */
-static LRESULT CALLBACK aga_winproc(
-		HWND wnd, UINT msg, WPARAM w_param, LPARAM l_param) {
+static LRESULT FAR CALLBACK aga_winproc(
+		HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
 
 	struct aga_winproc_pack* pack;
 	asys_bool_t down = ASYS_TRUE;
 
 	if(msg == WM_NCCREATE) return TRUE;
 
-	SetLastError(0);
-	if(!(pack = (void*) GetWindowLongPtr(wnd, GWLP_USERDATA))) {
-		/* TODO: We might be able to get out of this. */
-		if(GetLastError()) {
-			aga_win32_error(__FILE__, "GetWindowLongPtr");
-			asys_abort();
-		}
+	pack = (void*) aga_get_window_long(hwnd);
 
-		goto default_msg;
+	/* TODO: Does this need to be here? */
+	if(!pack || pack->magic != AGA_WINPROC_PACK_MAGIC) {
+		return DefWindowProc(hwnd, msg, w_param, l_param);
 	}
 
-	if(pack->magic != AGA_WINPROC_PACK_MAGIC) goto default_msg;
-
 	switch(msg) {
-		default: {
-			default_msg:;
-			return DefWindowProc(wnd, msg, w_param, l_param);
-		}
+		default: return DefWindowProc(hwnd, msg, w_param, l_param);
 
 		case WM_KEYUP: {
 			down = ASYS_FALSE;
@@ -101,54 +105,16 @@ static LRESULT CALLBACK aga_winproc(
 			return 0;
 		}
 
-		/* TODO: This isn't really era-appropriate. */
-		case WM_INPUT: {
-			static const UINT err = (UINT) -1;
-			static const UINT header_size = sizeof(RAWINPUTHEADER);
-
-			UINT input_size;
-			UINT result;
-			HRAWINPUT hnd = (HRAWINPUT) l_param;
-			RAWINPUT* data;
-
-			/* We are in the bg and aren't consuming input. */
-			if(GET_RAWINPUT_CODE_WPARAM(w_param) == RIM_INPUTSINK) return 1;
-
-			result = GetRawInputData(
-					hnd, RID_INPUT, 0, &input_size, header_size);
-			if(result == err) {
-				(void) aga_win32_error(__FILE__, "GetRawInputData");
-				return 0;
-			}
-
-			if(!(data = aga_malloc(input_size))) {
-				(void) aga_error_system(__FILE__, "aga_malloc");
-				return 0;
-			}
-
-			result = GetRawInputData(
-					hnd, RID_INPUT, data, &input_size, header_size);
-			if(result == err) {
-				(void) aga_win32_error(__FILE__, "GetRawInputData");
-				asys_memory_free(data);
-				return 0;
-			}
-
-			if(data->header.dwType == RIM_TYPEMOUSE) {
-				pack->pointer->dx = data->data.mouse.lLastX;
-				pack->pointer->dy = data->data.mouse.lLastY;
-			}
-
-			asys_memory_free(data);
-			return 0;
-		}
-
 		case WM_MOUSEMOVE: {
 			pack->pointer->x = GET_X_LPARAM(l_param) - pack->win->client_off_x;
 			pack->pointer->y = GET_Y_LPARAM(l_param) - pack->win->client_off_y;
 			return 0;
 		}
 
+		/*
+		 * TODO: Clean this up and remove the press vs. down distinction at
+		 * 		 Engine level.
+		 */
 		case WM_LBUTTONDOWN: {
 			aga_setbuttondown(pack->buttons, AGA_BUTTON_LEFT);
 			return 0;
@@ -183,6 +149,28 @@ static LRESULT CALLBACK aga_winproc(
 	}
 }
 
+enum asys_result asys_win32_register_class(void* out, void* module) {
+	WNDCLASS* out_class = out;
+
+	out_class->style = 0;
+	out_class->lpfnWndProc = aga_winproc;
+	out_class->cbClsExtra = 0;
+	out_class->cbWndExtra = sizeof(asys_native_long_t);
+	out_class->hInstance = module;
+	out_class->hIcon = 0;
+	out_class->hCursor = 0;
+	out_class->hbrBackground = 0;
+	out_class->lpszMenuName = 0;
+	out_class->lpszClassName = AGA_CLASS_NAME;
+
+	/* TODO: Re-enable icon. */
+	/*
+	out_class.hIcon = LoadIcon(module, MAKEINTRESOURCE(AGA_ICON_RESOURCE);
+	 */
+
+	return ASYS_RESULT_OK;
+}
+
 /*
  * Many thanks to code taken from: https://github.com/quakeforge/quakeforge/
  * (see libs/video/targets/).
@@ -191,7 +179,7 @@ static LRESULT CALLBACK aga_winproc(
 enum asys_result aga_window_device_new(
 		struct aga_window_device* env, const char* display) {
 
-	WNDCLASSA class;
+	enum asys_result result;
 
 	if(!env) return ASYS_RESULT_BAD_PARAM;
 
@@ -200,34 +188,10 @@ enum asys_result aga_window_device_new(
 	env->captured = ASYS_FALSE;
 	env->visible = ASYS_TRUE;
 
-	if(!(env->module = GetModuleHandle(0))) {
-		return aga_win32_error(__FILE__, "GetModuleHandle");
-	}
-
-	/* TODO: Re-enable icon. */
-	/*
-	if(!(icon = LoadIcon(env->module, MAKEINTRESOURCE(AGA_ICON_RESOURCE)))) {
-		(void) aga_win32_error(__FILE__, "LoadIcon");
-	}
-	 */
-
 	if(!(env->cursor = LoadCursor(0, IDC_ARROW))) {
-		(void) aga_win32_error(__FILE__, "LoadIcon");
-	}
-
-	class.style = CS_GLOBALCLASS;
-	class.lpfnWndProc = aga_winproc;
-	class.cbClsExtra = 0;
-	class.cbWndExtra = 0;
-	class.hInstance = env->module;
-	class.hIcon = 0;
-	class.hCursor = 0;
-	class.hbrBackground = 0;
-	class.lpszMenuName = 0;
-	class.lpszClassName = AGA_CLASS_NAME;
-
-	if(!(env->class = RegisterClass(&class))) {
-		return aga_win32_error(__FILE__, "RegisterClass");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "LoadCursor", result);
+		return result;
 	}
 
 	return ASYS_RESULT_OK;
@@ -235,10 +199,6 @@ enum asys_result aga_window_device_new(
 
 enum asys_result aga_window_device_delete(struct aga_window_device* env) {
 	if(!env) return ASYS_RESULT_BAD_PARAM;
-
-	if(!UnregisterClass(AGA_CLASS_NAME, 0)) {
-		return aga_win32_error(__FILE__, "UnregisterClass");
-	}
 
 	return ASYS_RESULT_OK;
 }
@@ -250,8 +210,10 @@ enum asys_result aga_keymap_new(
 	if(!env) return ASYS_RESULT_BAD_PARAM;
 
 	/* VK_OEM_CLEAR + 1 */
-	keymap->states = aga_calloc(AGAW_KEYMAX, sizeof(asys_bool_t));
-	if(!keymap->states) return aga_error_system(__FILE__, "aga_calloc");
+	keymap->states = asys_memory_allocate_zero(
+						AGA_KEY_MAX, sizeof(asys_bool_t));
+
+	if(!keymap->states) return ASYS_RESULT_OOM;
 
 	return ASYS_RESULT_OK;
 }
@@ -265,37 +227,73 @@ enum asys_result aga_keymap_delete(struct aga_keymap* keymap) {
 }
 
 static enum asys_result aga_window_set_wgl(
-		struct aga_window_device* env, struct aga_window* win, void* dc) {
+		struct aga_window_device* env, struct aga_window* win) {
+
+	enum asys_result result;
 
 	HGDIOBJ font;
+	int format;
+	void* dc;
 
 	if(!env) return ASYS_RESULT_BAD_PARAM;
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
+	if(!(dc = GetDC(win->hwnd))) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "GetDC", result);
+		return result;
+	}
+
+	if(!(format = ChoosePixelFormat(dc, &pixel_format))) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "ChoosePixelFormat", result);
+		return result;
+	}
+
+	if(!SetPixelFormat(dc, format, &pixel_format)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "SetPixelFormat", result);
+		return result;
+	}
+
 	if(!(win->wgl = wglCreateContext(dc))) {
-		return aga_win32_error(__FILE__, "wglCreateContext");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "wglCreateContext", result);
+		return result;
 	}
 
 	if(!wglMakeCurrent(dc, win->wgl)) {
-		return aga_win32_error(__FILE__, "wglMakeCurrent");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "wglMakeCurrent", result);
+		return result;
 	}
 
 	/*
 	 * TODO: This can be shared via. `wglShareLists' between all window wgl
 	 * contexts.
 	 */
-	{
-		if(!(font = GetStockObject(SYSTEM_FONT))) {
-			return aga_win32_error(__FILE__, "GetStockObject");
-		}
+	if(!(font = GetStockObject(SYSTEM_FONT))) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "GetStockObject", result);
+		return result;
+	}
 
-		if(!SelectObject(dc, font)) {
-			return aga_win32_error(__FILE__, "SelectObject");
-		}
+	if(!SelectObject(dc, font)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "SelectObject", result);
+		return result;
+	}
 
-		if(!wglUseFontBitmaps(dc, 0, 256, AGA_FONT_LIST_BASE)) {
-			return aga_win32_error(__FILE__, "wglUseFontBitmaps");
-		}
+	if(!wglUseFontBitmaps(dc, 0, 256, AGA_FONT_LIST_BASE)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "wglUseFontBitmaps", result);
+		return result;
+	}
+
+	if(!ReleaseDC(win->hwnd, dc)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "ReleaseDC", result);
+		return result;
 	}
 
 	return ASYS_RESULT_OK;
@@ -304,77 +302,51 @@ static enum asys_result aga_window_set_wgl(
 enum asys_result aga_window_new(
 		asys_size_t width, asys_size_t height, const char* title,
 		struct aga_window_device* env, struct aga_window* win,
-		asys_bool_t do_wgl, int argc, char** argv) {
+		asys_bool_t do_wgl, struct asys_main_data* main_data) {
 
 	static const long mask = WS_VISIBLE | WS_OVERLAPPEDWINDOW;
 
 	enum asys_result result;
 
-	RAWINPUTDEVICE mouse = {
-			HID_USAGE_PAGE_GENERIC, HID_USAGE_GENERIC_MOUSE, 0, 0 };
-
-	int ind;
-    void* dc;
-
-	(void) argc;
-	(void) argv;
+	RECT r;
 
 	if(!env) return ASYS_RESULT_BAD_PARAM;
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	/* TODO: Leaky error states. */
 	win->hwnd = CreateWindow(
-            AGA_CLASS_NAME, title, mask,
-            CW_USEDEFAULT, CW_USEDEFAULT, (int) width, (int) height,
-            0, 0, env->module, 0);
-    if(!win->hwnd) return aga_win32_error(__FILE__, "CreateWindow");
+			AGA_CLASS_NAME, title, mask, CW_USEDEFAULT, CW_USEDEFAULT,
+			(int) width, (int) height, 0, 0, main_data->module, 0);
 
-    if(!ShowWindow((void*) win->hwnd, SW_SHOWNORMAL)) {
-		return aga_win32_error(__FILE__, "ShowWindow");
+	if(!win->hwnd) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "CreateWindow", result);
+		return result;
 	}
 
-	if(!(dc = GetDC((void*) win->hwnd))) {
-		return aga_win32_error(__FILE__, "GetDC");
-	}
-
-	if(!(ind = ChoosePixelFormat(dc, &pixel_format))) {
-		return aga_win32_error(__FILE__, "ChoosePixelFormat");
-	}
-	if(!SetPixelFormat(dc, ind, &pixel_format)) {
-		return aga_win32_error(__FILE__, "SetPixelFormat");
+	if(!ShowWindow(win->hwnd, main_data->show)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "ShowWindow", result);
+		return result;
 	}
 
 	if(do_wgl) {
-		result = aga_window_set_wgl(env, win, dc);
+		result = aga_window_set_wgl(env, win);
 		if(result) return result;
 	}
 	else win->wgl = 0;
 
-	if(!ReleaseDC(win->hwnd, dc)) {
-		return aga_win32_error(__FILE__, "ReleaseDC");
+	if(!GetClientRect(win->hwnd, &r)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "GetClientRect", result);
+		return result;
 	}
 
-	/*
-	 * TODO: This isn't really era appropriate -- probably need to replicate
-	 * 		 The X API.
-	 */
-	mouse.hwndTarget = win->hwnd;
-	if(!RegisterRawInputDevices(&mouse, 1, sizeof(mouse))) {
-		return aga_win32_error(__FILE__, "RegisterRawInputDevices");
-	}
+	win->width = r.right - r.left;
+	win->height = r.bottom - r.top;
 
-	{
-		RECT r;
-		if(!GetClientRect(win->hwnd, &r)) {
-			return aga_win32_error(__FILE__, "GetClientRect");
-		}
-
-		win->width = r.right - r.left;
-		win->height = r.bottom - r.top;
-
-		win->client_off_x = r.left;
-		win->client_off_y = r.top;
-	}
+	win->client_off_x = r.left;
+	win->client_off_y = r.top;
 
 	return ASYS_RESULT_OK;
 }
@@ -382,22 +354,30 @@ enum asys_result aga_window_new(
 enum asys_result aga_window_delete(
 		struct aga_window_device* env, struct aga_window* win) {
 
+	enum asys_result result;
+
 	if(!env) return ASYS_RESULT_BAD_PARAM;
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
-    if(win->wgl && !wglDeleteContext(win->wgl)) {
-        return aga_win32_error(__FILE__, "wglDeleteContext");
-    }
-
-	if(DestroyWindow(win->hwnd)) {
-		return aga_win32_error(__FILE__, "DestroyWindow");
+	if(win->wgl && !wglDeleteContext(win->wgl)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "wglDeleteContext", result);
+		return result;
 	}
 
-    return ASYS_RESULT_OK;
+	if(DestroyWindow(win->hwnd)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "DestroyWindow", result);
+		return result;
+	}
+
+	return ASYS_RESULT_OK;
 }
 
 enum asys_result aga_window_select(
 		struct aga_window_device* env, struct aga_window* win) {
+
+	enum asys_result result;
 
 	void* dc;
 
@@ -406,15 +386,21 @@ enum asys_result aga_window_select(
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(!(dc = GetDC((void*) win->hwnd))) {
-		return aga_win32_error(__FILE__, "GetDC");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "GetDC", result);
+		return result;
 	}
 
 	if(!wglMakeCurrent(dc, win->wgl)) {
-		return aga_win32_error(__FILE__, "wglMakeCurrent");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "wglMakeCurrent", result);
+		return result;
 	}
 
 	if(!ReleaseDC(win->hwnd, dc)) {
-		return aga_win32_error(__FILE__, "ReleaseDC");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "ReleaseDC", result);
+		return result;
 	}
 
 	return ASYS_RESULT_OK;
@@ -428,7 +414,7 @@ enum asys_result aga_keymap_lookup(
 
 	if(!keymap->states) return ASYS_RESULT_ERROR;
 
-	if(sym > AGAW_KEYMAX) return ASYS_RESULT_BAD_OP;
+	if(sym > AGA_KEY_MAX) return ASYS_RESULT_BAD_OP;
 
 	*state = keymap->states[sym];
 
@@ -438,42 +424,53 @@ enum asys_result aga_keymap_lookup(
 static enum asys_result aga_setclipcursor(
 		struct aga_window* win, asys_bool_t clip) {
 
+	enum asys_result result;
+
 	RECT rect;
-	POINT begin;
-	POINT end;
+	POINT begin, end;
 
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
-	if(clip) {
-		if(!GetClientRect(win->hwnd, &rect)) {
-			return aga_win32_error(__FILE__, "GetClientRect");
-		}
-
-		begin.x = rect.left;
-		begin.y = rect.top;
-		end.x = rect.right;
-		end.y = rect.bottom;
-
-		if(!ClientToScreen(win->hwnd, &begin)) {
-			return aga_win32_error(__FILE__, "ClientToScreen");
-		}
-		if(!ClientToScreen(win->hwnd, &end)) {
-			return aga_win32_error(__FILE__, "ClientToScreen");
-		}
-
-		/*
-		 * NOTE: There seems to be a bit of a wonky activation area for the
-		 * Resize cursor, so we have to do a bit of fanagling here. Better to
-		 * Have a too-small clip area than have the mouse "leaking" out of the
-		 * Side of the window.
-		 */
-		rect.left = begin.x;
-		rect.top = begin.y + 1;
-		rect.right = end.x - 2;
-		rect.bottom = end.y - 1;
+	if(!clip) {
+		ClipCursor(0);
+		return ASYS_RESULT_OK;
 	}
 
-	ClipCursor(clip ? &rect : 0);
+	if(!GetClientRect(win->hwnd, &rect)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "GetClientRect", result);
+		return result;
+	}
+
+	begin.x = rect.left;
+	begin.y = rect.top;
+	end.x = rect.right;
+	end.y = rect.bottom;
+
+	if(!ClientToScreen(win->hwnd, &begin)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "ClientToScreen", result);
+		return result;
+	}
+
+	if(!ClientToScreen(win->hwnd, &end)) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "ClientToScreen", result);
+		return result;
+	}
+
+	/*
+	 * NOTE: There seems to be a bit of a wonky activation area for the
+	 * 		 Resize cursor, so we have to do a bit of fanagling here. Better to
+	 * 		 Have a too-small clip area than have the mouse "leaking" out of
+	 * 		 The side of the window.
+	 */
+	rect.left = begin.x;
+	rect.top = begin.y + 1;
+	rect.right = end.x - 2;
+	rect.bottom = end.y - 1;
+
+	ClipCursor(&rect);
 
 	return ASYS_RESULT_OK;
 }
@@ -486,8 +483,8 @@ enum asys_result aga_window_set_cursor(
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	SetCursor(visible ? env->cursor : 0);
-	env->visible = visible;
 
+	env->visible = visible;
 	env->captured = captured;
 
 	return aga_setclipcursor(win, captured);
@@ -496,21 +493,29 @@ enum asys_result aga_window_set_cursor(
 enum asys_result aga_window_swap(
 		struct aga_window_device* env, struct aga_window* win) {
 
+	enum asys_result result;
+
 	void* dc;
 
 	if(!env) return ASYS_RESULT_BAD_PARAM;
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
 	if(!(dc = GetDC((void*) win->hwnd))) {
-		return aga_win32_error(__FILE__, "GetDC");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "GetDC", result);
+		return result;
 	}
 
 	if(!SwapBuffers(dc)) {
-		return aga_win32_error(__FILE__, "SwapBuffers");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "SwapBuffers", result);
+		return result;
 	}
 
 	if(!ReleaseDC(win->hwnd, dc)) {
-		return aga_win32_error(__FILE__, "ReleaseDC");
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "ReleaseDC", result);
+		return result;
 	}
 
 	return ASYS_RESULT_OK;
@@ -533,6 +538,10 @@ enum asys_result aga_window_device_poll(
 	if(!die) return ASYS_RESULT_BAD_PARAM;
 	if(!buttons) return ASYS_RESULT_BAD_PARAM;
 
+	/*
+	 * TODO: Permanently attach a pack to a window on creation -- use extra
+	 * 		 Storage for a pack directly?
+	 */
 	pack.die = die;
 	pack.keymap = keymap;
 	pack.pointer = pointer;
@@ -553,9 +562,7 @@ enum asys_result aga_window_device_poll(
 
 	SetCursor(env->visible ? env->cursor : 0);
 
-	SetLastError(0);
-	SetWindowLongPtr(win->hwnd, GWLP_USERDATA, (LONG_PTR) &pack);
-	if(GetLastError()) return aga_win32_error(__FILE__, "SetWindowLongPtr");
+	aga_set_window_long(win->hwnd, (asys_native_long_t) &pack);
 
 	while(PeekMessage(&msg, win->hwnd, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);
@@ -566,22 +573,28 @@ enum asys_result aga_window_device_poll(
 }
 
 enum asys_result aga_dialog(
-		const char* message, const char* title, asys_bool_t* response,
+		const char* message, const char* title, asys_bool_t* out_response,
 		asys_bool_t is_error) {
+
+	enum asys_result result;
 
 	DWORD icon = is_error ? MB_ICONERROR : MB_ICONINFORMATION;
 	DWORD flags = MB_YESNO | MB_TASKMODAL | icon;
-	int res;
+
+	int response;
 
 	if(!message) return ASYS_RESULT_BAD_PARAM;
 	if(!title) return ASYS_RESULT_BAD_PARAM;
-	if(!response) return ASYS_RESULT_BAD_PARAM;
+	if(!out_response) return ASYS_RESULT_BAD_PARAM;
 
-	if(!(res = MessageBox(0, message, title, flags))) {
-		return aga_win32_error(__FILE__, "MessageBox");
+	/* TODO: Should we parent dialogs? */
+	if(!(response = MessageBox(0, message, title, flags))) {
+		result = ASYS_RESULT_ERROR;
+		asys_log_result(__FILE__, "MessageBox", result);
+		return result;
 	}
 
-	*response = (res == IDYES);
+	*out_response = (response == IDYES);
 
 	return ASYS_RESULT_OK;
 }
@@ -589,18 +602,16 @@ enum asys_result aga_dialog(
 static enum asys_result aga_windiagerr(DWORD err) {
 	switch(err) {
 		default: return ASYS_RESULT_ERROR;
-		case CDERR_DIALOGFAILURE: return ASYS_RESULT_ERROR;
 		case CDERR_FINDRESFAILURE: return ASYS_RESULT_ERROR;
 		case CDERR_INITIALIZATION: return ASYS_RESULT_OOM;
+		case CDERR_LOCKRESFAILURE: return ASYS_RESULT_BAD_OP;
 		case CDERR_LOADRESFAILURE: return ASYS_RESULT_ERROR;
 		case CDERR_LOADSTRFAILURE: return ASYS_RESULT_ERROR;
-		case CDERR_LOCKRESFAILURE: return ASYS_RESULT_BAD_OP;
 		case CDERR_MEMALLOCFAILURE: return ASYS_RESULT_OOM;
 		case CDERR_MEMLOCKFAILURE: return ASYS_RESULT_BAD_OP;
 		case CDERR_NOHINSTANCE: return ASYS_RESULT_ERROR;
 		case CDERR_NOHOOK: return ASYS_RESULT_ERROR;
 		case CDERR_NOTEMPLATE: return ASYS_RESULT_ERROR;
-		case CDERR_REGISTERMSGFAIL: return ASYS_RESULT_ERROR;
 		case CDERR_STRUCTSIZE: return ASYS_RESULT_BAD_PARAM;
 		case FNERR_BUFFERTOOSMALL: return ASYS_RESULT_ERROR;
 		case FNERR_INVALIDFILENAME: return ASYS_RESULT_BAD_PARAM;
@@ -608,30 +619,41 @@ static enum asys_result aga_windiagerr(DWORD err) {
 	}
 }
 
-enum asys_result aga_dialog_file(char** result) {
-	OPENFILENAMEA openfile = { 0 };
+enum asys_result aga_dialog_file(char** out_file) {
+	enum asys_result result;
 
-	if(!result) return ASYS_RESULT_BAD_PARAM;
+	OPENFILENAME openfile = { 0 };
+
+	if(!out_file) return ASYS_RESULT_BAD_PARAM;
 
 	/* Not ideal but seems to be correct for this particular invoc. pattern. */
-	if(!(*result = aga_calloc(MAX_PATH, sizeof(char)))) return ASYS_RESULT_OOM;
+	*out_file = asys_memory_allocate_zero(MAX_PATH, sizeof(char));
+	if(!*out_file) return ASYS_RESULT_OOM;
 
-	openfile.lStructSize = sizeof(openfile);
+	openfile.lStructSize = sizeof(OPENFILENAME);
+	/* TODO: Should we parent dialogs? */
+	/* openfile.hwndOwner */
 	openfile.lpstrFilter = "All Files\0*.*\0\0";
-	openfile.lpstrFile = *result;
+	openfile.nFilterIndex = 1;
+	openfile.lpstrFile = *out_file;
 	openfile.nMaxFile = MAX_PATH;
 	openfile.lpstrInitialDir = ".";
-	openfile.Flags = OFN_FILEMUSTEXIST;
+	openfile.Flags = OFN_SHOWHELP | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
 	if(!GetOpenFileName(&openfile)) {
-		asys_memory_free(*result);
-		return aga_windiagerr(CommDlgExtendedError());
+		asys_memory_free(*out_file);
+
+		result = aga_windiagerr(CommDlgExtendedError());
+		asys_log_result(__FILE__, "GetOpenFileName", result);
+		return result;
 	}
 
 	return ASYS_RESULT_OK;
 }
 
 enum asys_result aga_shell_open(const char* uri) {
+	enum asys_result result;
+
 	int flags = SW_SHOWNORMAL;
 
 	if(!uri) return ASYS_RESULT_BAD_PARAM;
@@ -640,7 +662,9 @@ enum asys_result aga_shell_open(const char* uri) {
 		return ASYS_RESULT_OK;
 	}
 
-	return aga_win32_error_path(__FILE__, "ShellExecute", uri);
+	result = ASYS_RESULT_ERROR;
+	asys_log_result(__FILE__, "ShellExecute", result);
+	return result;
 }
 
 #endif
