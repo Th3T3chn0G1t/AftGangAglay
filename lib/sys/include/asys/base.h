@@ -28,7 +28,6 @@
 #endif
 
 #ifdef __GNUC__
-# define ASYS_GNUC
 # define ASYS_EXTENSION __extension__
 #endif
 

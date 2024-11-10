@@ -24,6 +24,7 @@ enum asys_result asys_stream_delete(struct asys_stream*);
 
 /* TODO: This shouldn't be necessary once we have all dependencies on-board. */
 asys_stream_native_t asys_stream_native(struct asys_stream*);
+void* asys_stream_stdc(struct asys_stream*);
 
 enum asys_result asys_stream_seek(
 		struct asys_stream*, enum asys_stream_whence, asys_offset_t);

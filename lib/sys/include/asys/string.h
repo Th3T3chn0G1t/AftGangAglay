@@ -52,6 +52,14 @@ char* asys_string_duplicate(const char*);
 asys_native_long_t asys_string_to_native_long(const char*, char**);
 double asys_string_to_double(const char*, char**);
 
+const char* asys_bool_to_string(asys_bool_t);
+
+/*
+ * If the string is null, returns "<null>" -- otherwise returns the input
+ * String.
+ */
+const char* asys_string_optional(const char*);
+
 enum asys_result asys_string_format(
 		asys_fixed_buffer_t*, asys_size_t*, const char*, ...);
 

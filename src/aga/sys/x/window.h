@@ -29,7 +29,7 @@
 static const char* aga_check_x_last = "xlib";
 
 /* TODO: Check against return value for `0'. */
-#define AGA_CHECK_X_CHK(function, parameter) \
+#define AGA_CHECK_X(function, parameter) \
 			(aga_check_x_last = #function, function parameter)
 
 static const int single_buffer_fb[] = {
@@ -178,7 +178,7 @@ static enum asys_result aga_window_set_glx(
 		if(font_count) {
 			if(!fontname) return ASYS_RESULT_ERROR;
 
-			asys_log(__FILE__, "Using x11 font `%s'", *fontname);
+			asys_log(__FILE__, "Using X font `%s'", *fontname);
 
 			AGA_CHECK_X(XFreeFontNames, (fontname));
 
@@ -252,7 +252,8 @@ enum asys_result aga_window_new(
 	if(win->window == None) return ASYS_RESULT_ERROR;
 
 	AGA_CHECK_X(XSetStandardProperties,
-			 (env->display, win->window, title, "", None, argv, argc, 0));
+			 (env->display, win->window, title, "",
+				None, main_data->argv, main_data->argc, 0));
 
 	AGA_CHECK_X(XSelectInput,
 			 (env->display, win->window, aga_global_window_mask));
@@ -514,7 +515,7 @@ enum asys_result aga_window_device_poll(
 					centred = (event.xmotion.x == x && event.xmotion.y == y);
 
 					if(capture->window == event.xmotion.window && !centred) {
-						AGAX_CHK(XWarpPointer,
+						AGA_CHECK_X(XWarpPointer,
 								 (env->display, win, win, 0, 0, 0, 0, x, y));
 					}
 

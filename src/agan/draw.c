@@ -45,6 +45,7 @@ enum asys_result agan_draw_register(struct py_env* env) {
 	return ASYS_RESULT_OK;
 }
 
+/* TODO: Add FOV as optional extra param. */
 struct py_object* agan_setcam(
 		struct py_env* env, struct py_object* self, struct py_object* args) {
 

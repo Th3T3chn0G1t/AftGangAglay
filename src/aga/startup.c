@@ -11,6 +11,7 @@
 #include <asys/getopt.h>
 #include <asys/memory.h>
 #include <asys/main.h>
+#include <asys/string.h>
 
 enum asys_result aga_settings_new(
 		struct aga_settings* opts, struct asys_main_data* main_data) {
@@ -26,7 +27,7 @@ enum asys_result aga_settings_new(
 	opts->display = 0;
 	opts->chdir = ".";
 	opts->audio_buffer = 1024;
-	opts->startup_script = "script/main.py";
+	opts->startup_script = "script/main.py.raw";
 	opts->python_path = "script";
 	opts->respack = "agapack.raw";
 	opts->width = 640;
@@ -223,6 +224,55 @@ enum asys_result aga_settings_parse_config(
 
 	asys_log_result(__FILE__, "aga_config_lookup", result);
 	if(!result) opts->fov = (float) fv;
+
+	/* TODO: Put this in a separate function. */
+
+	asys_log(__FILE__, "Loaded startup options:");
+#ifdef AGA_BUILD
+	asys_log(__FILE__, "\tCompile?: %s", asys_bool_to_string(opts->compile));
+	asys_log(__FILE__, "\tBuild: %s", opts->build_file);
+#endif
+	asys_log(__FILE__, "\tTitle: %s", asys_string_optional(opts->title));
+	asys_log(
+			__FILE__, "\tConfig: %s", asys_string_optional(opts->config_file));
+
+	asys_log(__FILE__, "\tDisplay: %s", asys_string_optional(opts->display));
+	asys_log(__FILE__, "\tDirectory: %s", asys_string_optional(opts->chdir));
+	asys_log(__FILE__, "\tVersion: %s", asys_string_optional(opts->version));
+	asys_log(
+			__FILE__, "\tResource Pack: %s",
+			asys_string_optional(opts->respack));
+
+	asys_log(
+			__FILE__, "\tAudio Buffer: " ASYS_NATIVE_ULONG_FORMAT,
+			opts->audio_buffer);
+
+	asys_log(
+			__FILE__, "\tAudio?: %s",
+			asys_bool_to_string(opts->audio_enabled));
+
+	asys_log(
+			__FILE__, "\tStartup Script: %s",
+			asys_string_optional(opts->startup_script));
+
+	asys_log(
+			__FILE__, "\tPython Path: %s",
+			asys_string_optional(opts->python_path));
+
+	asys_log(
+			__FILE__, "\tWindow Size: [ " ASYS_NATIVE_ULONG_FORMAT ", "
+			ASYS_NATIVE_ULONG_FORMAT " ]", opts->width, opts->height);
+
+
+	asys_log(
+			__FILE__, "\tMipmap?: %s",
+			asys_bool_to_string(opts->mipmap_default));
+
+	asys_log(__FILE__, "\tFOV: %f", opts->fov);
+
+	asys_log(__FILE__, "\tVerbose?: %s", asys_bool_to_string(opts->verbose));
+
+	/* TODO: Config dump. */
 
 	return ASYS_RESULT_OK;
 }

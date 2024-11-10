@@ -72,7 +72,7 @@ enum asys_result asys_stream_new_write(
 # elif defined(ASYS_UNIX)
 	stream->fd = 0;
 
-	if((stream->fd = open(path, O_WRONLY)) == -1) {
+	if((stream->fd = open(path, O_WRONLY | O_CREAT, 0666)) == -1) {
 		return asys_result_errno_path(__FILE__, "open", path);
 	}
 
@@ -139,6 +139,20 @@ asys_stream_native_t asys_stream_native(struct asys_stream* stream) {
 #else
 	(void) stream;
 	return -1;
+#endif
+}
+
+void* asys_stream_stdc(struct asys_stream* stream) {
+#ifdef ASYS_WIN32
+	(void) stream;
+	return 0;
+#elif defined(ASYS_UNIX)
+	return fdopen(stream->fd, "r");
+#elif defined(ASYS_STDC)
+	return stream->fp;
+#else
+	(void) stream;
+	return 0;
 #endif
 }
 
@@ -511,14 +525,20 @@ enum asys_result asys_stream_splice(
 		asys_size_t read_count;
 
 		while(ASYS_TRUE) {
+			enum asys_result held_result;
+
 			result = asys_stream_read(
 					from, &read_count, buffer, sizeof(buffer));
 
-			if(result == ASYS_RESULT_EOF && read_count == 0) break;
-			else if(result) return result;
+			if(result && result != ASYS_RESULT_EOF) return result;
+			if(!read_count) break;
+
+			held_result = result;
 
 			result = asys_stream_write(to, buffer, read_count);
 			if(result) return result;
+
+			if(held_result == ASYS_RESULT_EOF) break;
 		}
 
 		return ASYS_RESULT_OK;

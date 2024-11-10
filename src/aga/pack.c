@@ -91,6 +91,10 @@ enum asys_result aga_resource_pack_new(
 		goto cleanup;
 	}
 
+	/*
+	 * TODO: Needing to keep the entire resource pack header config loaded
+	 * 		 Is not a terribly efficient use of our memory. Can we avoid this?
+	 */
 	result = aga_config_new(&pack->stream, header.size, &pack->root);
 	if(result) goto cleanup;
 

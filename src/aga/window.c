@@ -8,8 +8,6 @@
 #include <aga/window.h>
 #include <aga/gl.h>
 
-# include "sys/win32/window.h"
-
 #ifdef ASYS_WIN32
 # include "sys/win32/window.h"
 #else

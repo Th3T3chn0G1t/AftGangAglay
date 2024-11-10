@@ -62,10 +62,20 @@ int PASCAL WinMain(
 	if(!UnregisterClass(window_class.lpszClassName, 0)) {
 		result = ASYS_RESULT_ERROR;
 		asys_log_result(__FILE__, "UnregisterClass", result);
-		return result;
+		return result; /* TODO: This is wrong. */
 	}
 
 	return 0;
 }
 #else
+int main(int argc, char** argv) {
+	struct asys_main_data main_data;
+
+	main_data.argv = argv;
+	main_data.argc = argc;
+
+	asys_result_check(__FILE__, "asys_main", asys_main(&main_data));
+
+	return 0;
+}
 #endif

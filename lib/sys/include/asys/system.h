@@ -21,6 +21,7 @@
 #endif
 
 #ifdef ASYS_UNIX
+# define _POSIX_C_SOURCE 2
 # include <unistd.h>
 # include <fcntl.h>
 # include <sys/stat.h>

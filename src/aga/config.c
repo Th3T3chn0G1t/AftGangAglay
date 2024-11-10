@@ -220,15 +220,10 @@ static void aga_sgml_start_element(
 			return;
 		}
 		case AGA_NODE_ITEM: {
-			if(!attribute_present[AGA_ITEM_NAME]) {
-				asys_log(
-						__FILE__, "warn: SGML_new: unnamed `<item>' element",
-						element_number);
-
-				node->name = 0;
-			}
+			if(!attribute_present[AGA_ITEM_NAME]) node->name = 0;
 			else {
 				const char* value = attribute_value[AGA_ITEM_NAME];
+				/* TODO: Clear new alloc on OOM (?). */
 				if(!(node->name = asys_string_duplicate(value))) return;
 			}
 

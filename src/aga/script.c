@@ -202,11 +202,15 @@ enum asys_result aga_script_engine_lookup(
 	if(!name) return ASYS_RESULT_BAD_PARAM;
 
 	if(!(class->class = py_dict_lookup(eng->global, name))) {
+		asys_log(__FILE__, "Could not find class `%s' in game script", name);
 		return ASYS_RESULT_ERROR;
 	}
 
 	cl = class->class;
-	if(cl->type != PY_TYPE_CLASS) return ASYS_RESULT_ERROR;
+	if(cl->type != PY_TYPE_CLASS) {
+		asys_log(__FILE__, "Identifier `%s' was not `class'", name);
+		return ASYS_RESULT_ERROR;
+	}
 
 	return ASYS_RESULT_OK;
 }
@@ -245,6 +249,7 @@ enum asys_result aga_script_instance_call(
 
 	apro_stamp_start(APRO_SCRIPT_INSTCALL_RISING);
 
+	/* TODO: Add better user-facing errors here. */
 	if(!(function = py_class_get_attr(inst->class->class, name))) {
 		return ASYS_RESULT_ERROR;
 	}

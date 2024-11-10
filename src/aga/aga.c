@@ -180,6 +180,7 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 	result = aga_script_engine_new(
 			&script_engine, opts.startup_script, &pack, opts.python_path,
 			&userdata);
+
 	asys_log_result(__FILE__, "aga_script_engine_new", result);
 	if(!result) {
 		asys_log(__FILE__, "Instantiating game instance...");

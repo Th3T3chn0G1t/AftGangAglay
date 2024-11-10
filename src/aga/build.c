@@ -175,7 +175,7 @@ static enum asys_result aga_build_python(
 static enum asys_result aga_build_obj(
 		struct asys_stream* out, struct asys_stream* in) {
 
-	enum asys_result result = ASYS_RESULT_OK;
+	enum asys_result result;
 
 	GLMmodel* model;
 	float extent[6];
@@ -183,8 +183,15 @@ static enum asys_result aga_build_obj(
 	unsigned i, j;
 	GLMgroup* group;
 
+	void* stdc_handle;
+
+	/* TODO: This needs to be closed. */
+	stdc_handle = asys_stream_stdc(in);
+	if(!stdc_handle) return ASYS_RESULT_NOT_IMPLEMENTED;
+
 	/* TODO: Handle different EH. */
-	if(!(model = glmReadOBJFile(AGA_BUILD_FNAME, in))) return ASYS_RESULT_OOM;
+	model = glmReadOBJFile(AGA_BUILD_FNAME, asys_stream_stdc(in));
+	if(!model) return ASYS_RESULT_OOM;
 
 	/* TODO: Put this epsilon somewhere configurable. */
 	/* TODO: This hangs? (Or takes a *really* long time on sponza or smth.) */
@@ -700,7 +707,7 @@ enum asys_result aga_build(struct aga_settings* opts) {
 	struct aga_config_node root;
 	struct aga_config_node* input_root;
 
-	struct asys_stream stream;
+	struct asys_stream stream = { 0 };
 	const char* out_path = 0;
 
 	asys_log(__FILE__, "Compiling project `%s'...", opts->build_file);

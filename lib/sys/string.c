@@ -300,13 +300,14 @@ asys_native_long_t asys_string_to_native_long(
 		const char* string, char** end) {
 
 /* TODO: Did Windows 3.1 have a native way of doing this? */
-#ifdef ASYS_STDCa
+#ifdef ASYS_STDC
 # ifdef ASYS_LP32
 	return strtoll(string, end, 10);
 # else
 	return strtol(string, end, 10);
 # endif
 #else
+	/* TODO: This might be broken. */
 	asys_size_t len = asys_string_length(string);
 	asys_size_t i = len;
 	asys_native_long_t ret = 0;
@@ -341,6 +342,14 @@ double asys_string_to_double(const char* string, char** end) {
 
 	return 0.0;
 #endif
+}
+
+const char* asys_bool_to_string(asys_bool_t value) {
+	return value ? "true" : "false";
+}
+
+const char* asys_string_optional(const char* string) {
+	return string ? string : "<null>";
 }
 
 enum asys_result asys_string_format(
