@@ -41,27 +41,10 @@ SET_CFLAGS = $(SET_CFLAGS) /DAGA_DEVBUILD
 
 # TODO: Use pragma comment lib under `_MSC_VER' to simplify this? Should this
 #		File use Tools.ini?
-GL_LDLIBS = opengl32.lib glu32.lib gdi32.lib shell32.lib user32.lib winmm.lib
+GL_LDLIBS = opengl32.lib glu32.lib shell32.lib winmm.lib
 GL_LDLIBS = $(GL_LDLIBS) comdlg32.lib
 
-!include lib/prof/asys.mk
-!include lib/prof/apro.mk
-
-!include vendor/python.mk
-!include vendor/www.mk
-!include vendor/glm.mk
-!include vendor/tiff.mk
-
-!ifdef DEVBUILD
-DEV_LIBS = $(GLM_OUT) $(TIF_OUT)
-DEV_HDR = $(GLM_HDR) $(TIF_HDR)
-DEV_INC = /I$(GLMH) /I$(TIFI)
-!endif
-
-!include src/aga.mk
-
-SET_LDFLAGS = /SUBSYSTEM:WINDOWS
-SET_LDLIBS =
+SET_LDLIBS = user32.lib kernel32.lib gdi32.lib
 
 !ifdef MAINTAINER
 SET_CFLAGS = $(SET_CFLAGS) /Wall /WX
@@ -82,12 +65,29 @@ SET_CFLAGS = $(SET_CFLAGS) /wd4061
 SET_CFLAGS = $(SET_CFLAGS) /wd4127
 !endif
 
-SET_CFLAGS = $(SET_CFLAGS) /I$(APRO) /I$(ASYS)
-SET_CFLAGS = $(SET_CFLAGS) /I$(PYI) /I$(WWWH) $(DEV_INC)
-SET_CFLAGS = $(SET_CFLAGS) /Ivendor$(SEP)libtiff$(SEP)
+SET_CFLAGS = $(SET_CFLAGS) $(GL_CFLAGS)
+SET_CFLAGS = $(SET_CFLAGS) /I$(APRO) /I$(ASYSI) /I$(PYI) /I$(WWWH) $(DEV_INC)
 SET_CFLAGS = $(SET_CFLAGS) /Iinclude
-
+SET_CFLAGS = $(SET_CFLAGS) /Ivendor$(SEP)libtiff$(SEP)
 SET_CFLAGS = $(SET_CFLAGS) /DAGA_VERSION=\"$(VERSION)\"
+
+!include lib/sys/asys.mk
+!include lib/prof/apro.mk
+
+!include vendor/python.mk
+!include vendor/www.mk
+!include vendor/glm.mk
+!include vendor/tiff.mk
+
+!ifdef DEVBUILD
+DEV_LIBS = $(GLM_OUT) $(TIF_OUT)
+DEV_HDR = $(GLM_HDR) $(TIF_HDR)
+DEV_INC = /I$(GLMH) /I$(TIFI)
+!endif
+
+SET_LDFLAGS = /SUBSYSTEM:WINDOWS
+
+!include src/aga.mk
 
 .c$(OBJ):
 	$(CC) /c $(CFLAGS) $(SET_CFLAGS) /Fo:$@ $<
