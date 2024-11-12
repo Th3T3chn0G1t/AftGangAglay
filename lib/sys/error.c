@@ -57,6 +57,10 @@ void asys_result_fatal_path(
 	asys_result_format(&buffer, function, path, result);
 
 	asys_log(file, buffer);
+
+	/*
+	 * TODO: This should not be shown during headless execution (during build).
+	 */
 	FatalAppExit(0, buffer);
 #else
 	asys_log_result_path(file, function, path, result);

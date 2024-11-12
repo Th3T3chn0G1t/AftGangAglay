@@ -3,21 +3,6 @@
  * Copyright (C) 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
  */
 
-#include <asys/varargs.h>
-
-#include <aga/build.h>
-#include <aga/startup.h>
-#include <aga/pack.h>
-
-#include <asys/log.h>
-#include <asys/stream.h>
-#include <asys/file.h>
-#include <asys/memory.h>
-#include <asys/string.h>
-
-/* TODO: For `struct vertex' definition -- move elsewhere. */
-#include <agan/object.h>
-
 #define AGA_RAW_SUFFIX (".raw")
 
 #define AGA_PY_TAIL ("\n\xFF")
@@ -28,6 +13,19 @@
 #ifdef AGA_DEVBUILD
 # include <glm.h>
 # include <tiffio.h>
+
+# include <aga/build.h>
+# include <aga/startup.h>
+# include <aga/pack.h>
+
+# include <asys/log.h>
+# include <asys/stream.h>
+# include <asys/file.h>
+# include <asys/memory.h>
+# include <asys/string.h>
+
+/* TODO: For `struct vertex' definition -- move elsewhere. */
+# include <agan/object.h>
 
 enum aga_file_kind {
 	AGA_KIND_NONE = 0,
@@ -89,15 +87,15 @@ static enum asys_result aga_build_open_config(
 
 static enum asys_result aga_build_open_output(
 		struct aga_config_node* root, struct asys_stream* stream,
-		const char** out_path) {
+		char** out_path) {
 
 	static const char* output = "Output";
 
 	enum asys_result result;
-	const char* path;
+	char* path;
 
 	result = aga_config_lookup(
-			root->children, &output, 1, &path, AGA_STRING, ASYS_FALSE);
+			root->children, &output, 1, &path, AGA_PATH, ASYS_FALSE);
 
 	if(result) {
 		asys_log(
@@ -609,7 +607,7 @@ static enum asys_result aga_build_iter(
 		const char* str = 0;
 
 		enum aga_file_kind kind = AGA_KIND_NONE;
-		const char* path = 0;
+		char* path = 0;
 		asys_bool_t recurse = ASYS_FALSE;
 
 		for(j = 0; j < node->len; ++j) {
@@ -634,7 +632,7 @@ static enum asys_result aga_build_iter(
 
 				continue;
 			}
-			else if(aga_config_variable("Path", child, AGA_STRING, &path)) {
+			else if(aga_config_variable("Path", child, AGA_PATH, &path)) {
 				continue;
 			}
 			else if(aga_config_variable("Recurse", child, AGA_INTEGER, &v)) {
@@ -656,6 +654,8 @@ static enum asys_result aga_build_iter(
 
 			held_result = result;
 		}
+
+		asys_memory_free(path);
 	}
 
 	return held_result;
@@ -708,7 +708,7 @@ enum asys_result aga_build(struct aga_settings* opts) {
 	struct aga_config_node* input_root;
 
 	struct asys_stream stream = { 0 };
-	const char* out_path = 0;
+	char* out_path = 0;
 
 	asys_log(__FILE__, "Compiling project `%s'...", opts->build_file);
 
@@ -787,6 +787,8 @@ enum asys_result aga_build(struct aga_settings* opts) {
 
 	if((result = aga_config_delete(&root))) return result;
 
+	asys_memory_free(out_path);
+
 	asys_log(__FILE__, "Done!");
 
 	return ASYS_RESULT_OK;
@@ -807,6 +809,8 @@ enum asys_result aga_build(struct aga_settings* opts) {
 
 		asys_log_result(
 				__FILE__, "asys_stream_delete", asys_stream_delete(&stream));
+
+		asys_memory_free(out_path);
 
 		asys_log(__FILE__, "err: Build failed");
 

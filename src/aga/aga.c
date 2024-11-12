@@ -100,9 +100,10 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 
 #ifdef AGA_DEVBUILD
 	if(opts.compile) {
-		asys_log_result(__FILE__, "aga_build", aga_build(&opts));
+		result = aga_build(&opts);
+		asys_log_result(__FILE__, "aga_build", result);
 		asys_log(__FILE__, "Bye-bye!");
-		return 0;
+		return result;
 	}
 #endif
 
@@ -317,5 +318,5 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 
 	asys_log(__FILE__, "Bye-bye!");
 
-	return 0;
+	return ASYS_RESULT_OK;
 }

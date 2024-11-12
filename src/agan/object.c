@@ -134,7 +134,8 @@ static asys_bool_t agan_mkobj_model(
 
 	struct aga_resource* res;
 	unsigned mode = GL_COMPILE;
-	const char* path;
+	char* model_path;
+	char* texture_path;
 
 	/* TODO: Delete lists in error conditions. */
 	obj->drawlist = glGenLists(1);
@@ -169,11 +170,14 @@ static asys_bool_t agan_mkobj_model(
 
 		result = aga_config_lookup(
 				conf->children, &mipmap, 1, &v, AGA_INTEGER, ASYS_FALSE);
+
 		if(result) v = settings->mipmap_default;
 		do_mips = !!v;
 
 		result = aga_config_lookup(
-				conf->children, &texture, 1, &path, AGA_STRING, ASYS_FALSE);
+				conf->children, &texture, 1, &texture_path, AGA_PATH,
+				ASYS_FALSE);
+
 		if(result) {
 			/* TODO: Does this handle this case gracefully. */
 			asys_log(
@@ -196,11 +200,13 @@ static asys_bool_t agan_mkobj_model(
 			 * TODO: Handle missing textures etc. gracefully - default/
 			 *       Procedural resources?
 			 */
-			result = aga_resource_new(pack, path, &res);
+			result = aga_resource_new(pack, texture_path, &res);
 			if(aga_script_err("aga_resource_new", result)) return ASYS_TRUE;
 
 			result = aga_resource_release(res);
-			if(aga_script_err("aga_resource_release", result)) return ASYS_TRUE;
+			if(aga_script_err("aga_resource_release", result)) {
+				return ASYS_TRUE;
+			}
 
 			result = aga_config_lookup(
 					res->config, &width, 1, &w, AGA_INTEGER, ASYS_FALSE);
@@ -256,10 +262,13 @@ static asys_bool_t agan_mkobj_model(
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag);
 				if(aga_script_gl_err("glTexParameteri")) return ASYS_TRUE;
 			}
+
+			asys_memory_free(texture_path);
 		}
 
 		result = aga_config_lookup(
-				conf->children, &model, 1, &path, AGA_STRING, ASYS_FALSE);
+				conf->children, &model, 1, &model_path, AGA_PATH, ASYS_FALSE);
+
 		if(result) {
 			asys_log(
 					__FILE__, "warn: Object `%s' is missing a model entry",
@@ -274,18 +283,23 @@ static asys_bool_t agan_mkobj_model(
 			aga_config_int_t ver;
 
 			asys_memory_free(obj->modelpath);
-			if(!(obj->modelpath = asys_string_duplicate(path))) {
+			if(!(obj->modelpath = asys_string_duplicate(model_path))) {
 				py_error_set_nomem();
 				return 0;
 			}
 
-			result = aga_resource_pack_lookup(pack, path, &res);
+			result = aga_resource_pack_lookup(pack, model_path, &res);
 			if(aga_script_err("aga_resource_pack_lookup", result)) {
-				asys_log(__FILE__, "err: Failed to find resource `%s'", path);
+				asys_log(
+						__FILE__, "err: Failed to find resource `%s'",
+						model_path);
+
 				return ASYS_TRUE;
 			}
 
 			agan_mkobj_extent(obj, res->config);
+
+			asys_memory_free(model_path);
 
 			result = aga_config_lookup(
 					res->config, &version, 1, &ver, AGA_INTEGER, ASYS_FALSE);

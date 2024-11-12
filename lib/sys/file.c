@@ -320,23 +320,9 @@ enum asys_result asys_path_iterate(
 	}
 
 	do {
-		static asys_bool_t did_warn_deprecation = ASYS_FALSE;
-
 		if(data.name[0] == '.') continue;
 
-		if(!did_warn_deprecation) {
-			/* TODO: Address this in next major release. */
-			asys_log(
-					__FILE__,
-					"warn: Windows directory iteration currently replaces "
-					"`\\' with `/' during path concatenation -- this will be "
-					"changed in a future release when config can mark inputs "
-					"as paths to auto-replace path separators");
-
-			did_warn_deprecation = !did_warn_deprecation;
-		}
-
-		result = asys_string_format(&buffer, 0, "%s/%s", path, data.name);
+		result = asys_string_format(&buffer, 0, "%s\\%s", path, data.name);
 		if(result) {
 			if(keep_going) {
 				held_result = result;

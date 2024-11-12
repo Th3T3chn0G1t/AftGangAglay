@@ -6,12 +6,26 @@
 #ifndef ASYS_BASE_H
 #define ASYS_BASE_H
 
-#ifdef _WIN32
-# define ASYS_WIN32
-# ifdef _MSC_VER
-#  define ASYS_VC
-# endif
+/* C environment. */
+
+#ifdef _MSC_VER
+# define ASYS_VISUALC
+#endif
+
+#ifdef __GNUC__
+# define ASYS_GNUC
+#endif
+
+#ifdef __STDC__
+# define ASYS_STDC
+#endif
+
+/* Target system. */
+
 /* TODO: Review all `_WIN64'/`_WIN32' uses. */
+#ifdef _WIN32
+# undef ASYS_STDC
+# define ASYS_WIN32
 # ifdef _WIN64
 #  define ASYS_WIN64
 #  define ASYS_LP32
@@ -23,17 +37,29 @@
 # define ASYS_UNIX
 #endif
 
-#if defined(__STDC__) && !defined(_WIN32)
-# define ASYS_STDC
-#endif
+/* Utility macros. */
 
-#ifdef __GNUC__
+#ifdef ASYS_GNUC
 # define ASYS_EXTENSION __extension__
 #endif
 
 #ifndef ASYS_EXTENSION
 # define ASYS_EXTENSION
 #endif
+
+#ifdef __has_attribute
+# if __has_attribute(fallthrough)
+#  define ASYS_FALLTHROUGH __attribute__((fallthrough))
+# endif
+#endif
+
+#ifndef ASYS_FALLTHROUGH
+# define ASYS_FALLTHROUGH
+#endif
+
+#define ASYS_LENGTH(arr) (sizeof((arr)) / sizeof((arr)[0]))
+
+/* Native long defines/typedefs for lp32 vs. lp64 */
 
 #ifdef ASYS_LP32
 ASYS_EXTENSION typedef long long asys_native_long_t;
@@ -51,7 +77,7 @@ ASYS_EXTENSION typedef unsigned long long asys_native_ulong_t;
 # endif
 # define ASYS_MAKE_NATIVE_LONG(v) (ASYS_EXTENSION v##LL)
 # define ASYS_MAKE_NATIVE_ULONG(v) (ASYS_EXTENSION v##ULL)
-#else
+#else /* lp64 */
 typedef long asys_native_long_t;
 typedef unsigned long asys_native_ulong_t;
 # define ASYS_NATIVE_LONG_FORMAT "%ld"
@@ -60,17 +86,7 @@ typedef unsigned long asys_native_ulong_t;
 # define ASYS_MAKE_NATIVE_ULONG(v) (v##UL)
 #endif
 
-#ifdef __has_attribute
-# if __has_attribute(fallthrough)
-#  define ASYS_FALLTHROUGH __attribute__((fallthrough))
-# endif
-#endif
-
-#ifndef ASYS_FALLTHROUGH
-# define ASYS_FALLTHROUGH
-#endif
-
-#define ASYS_LENGTH(arr) (sizeof((arr)) / sizeof((arr)[0]))
+/* Base typedefs. */
 
 typedef unsigned char asys_uchar_t;
 typedef unsigned int asys_uint_t;

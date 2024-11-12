@@ -52,6 +52,8 @@ int PASCAL WinMain(
 				__FILE__, "asys_win32_register_class",
 				asys_win32_register_class(&window_class, instance));
 
+		window_class.lpszClassName = asys_global_win32_class_name;
+
 		if(!RegisterClass(&window_class)) {
 			asys_result_fatal(__FILE__, "RegisterClass", ASYS_RESULT_ERROR);
 		}
@@ -59,7 +61,7 @@ int PASCAL WinMain(
 
 	asys_result_check(__FILE__, "asys_main", asys_main(&main_data));
 
-	if(!UnregisterClass(window_class.lpszClassName, 0)) {
+	if(!UnregisterClass(asys_global_win32_class_name, 0)) {
 		result = ASYS_RESULT_ERROR;
 		asys_log_result(__FILE__, "UnregisterClass", result);
 		return result; /* TODO: This is wrong. */

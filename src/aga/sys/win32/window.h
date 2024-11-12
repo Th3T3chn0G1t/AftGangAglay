@@ -149,6 +149,8 @@ static LRESULT FAR CALLBACK aga_winproc(
 	}
 }
 
+const char* asys_global_win32_class_name = AGA_CLASS_NAME;
+
 enum asys_result asys_win32_register_class(void* out, void* module) {
 	WNDCLASS* out_class = out;
 
@@ -161,7 +163,7 @@ enum asys_result asys_win32_register_class(void* out, void* module) {
 	out_class->hCursor = 0;
 	out_class->hbrBackground = 0;
 	out_class->lpszMenuName = 0;
-	out_class->lpszClassName = AGA_CLASS_NAME;
+	out_class->lpszClassName = asys_global_win32_class_name;
 
 	/* TODO: Re-enable icon. */
 	/*

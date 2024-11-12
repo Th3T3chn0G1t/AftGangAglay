@@ -128,6 +128,8 @@ enum asys_result aga_settings_new(
 	return ASYS_RESULT_OK;
 }
 
+/* TODO: Release startup -- delete config node, free script/pypath etc.. */
+
 enum asys_result aga_settings_parse_config(
 		struct aga_settings* opts, struct aga_resource_pack* pack) {
 
@@ -187,13 +189,13 @@ enum asys_result aga_settings_parse_config(
 
 	result = aga_config_lookup(
 			opts->config.children, startup, ASYS_LENGTH(startup),
-			&opts->startup_script, AGA_STRING, ASYS_TRUE);
+			&opts->startup_script, AGA_PATH, ASYS_TRUE);
 
 	asys_log_result(__FILE__, "aga_config_lookup", result);
 
 	result = aga_config_lookup(
 			opts->config.children, path, ASYS_LENGTH(path),
-			&opts->python_path, AGA_STRING, ASYS_TRUE);
+			&opts->python_path, AGA_PATH, ASYS_TRUE);
 
 	asys_log_result(__FILE__, "aga_config_lookup", result);
 

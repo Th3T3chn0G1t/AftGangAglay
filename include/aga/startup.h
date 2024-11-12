@@ -31,8 +31,8 @@ struct aga_settings {
 	asys_size_t audio_buffer;
 	asys_bool_t audio_enabled;
 
-	const char* startup_script;
-	const char* python_path;
+	char* startup_script;
+	char* python_path;
 
 	asys_size_t width;
 	asys_size_t height;

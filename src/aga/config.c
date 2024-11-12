@@ -423,9 +423,30 @@ asys_bool_t aga_config_variable(
 	if(!name || !node || !value) return ASYS_FALSE;
 
 	if(asys_string_equal(node->name, name)) {
-		if(node->type != type) {
-			asys_log(__FILE__, "warn: wrong type for field `%s'", name);
+		if(type == AGA_PATH) {
+			char* path;
+			asys_size_t i;
+
+			if(node->type != AGA_STRING) goto bad_type;
+
+			*(char**) value = path = asys_string_duplicate(node->data.string);
+
+#ifdef ASYS_WIN32
+			for(i = 0; path[i]; ++i) {
+				if(path[i] == '/') path[i] = '\\';
+			}
+#else
+			(void) i;
+#endif
+
 			return ASYS_TRUE;
+		}
+		if(node->type != type) {
+			bad_type: {
+				/* TODO: This should default the output value. */
+				asys_log(__FILE__, "warn: wrong type for field `%s'", name);
+				return ASYS_TRUE;
+			};
 		}
 		switch(type) {
 			default:; ASYS_FALLTHROUGH;
@@ -444,6 +465,7 @@ asys_bool_t aga_config_variable(
 				break;
 			}
 		}
+
 		return ASYS_TRUE;
 	}
 

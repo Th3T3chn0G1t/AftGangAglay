@@ -96,13 +96,14 @@ static asys_offset_t asys_string_find_base(
 static asys_offset_t asys_string_reverse_find_base(
 		const char* string, char character) {
 
-	asys_size_t i, last = -1;
+	asys_size_t i;
+	asys_offset_t last = -1;
+
+	if(character == '\0') return (asys_offset_t) asys_string_length(string);
 
 	for(i = 0; string[i]; ++i) {
 		if(string[i] == character) last = i;
 	}
-
-	if(character == '\0') return (asys_offset_t) i;
 
 	return (asys_offset_t) last;
 }
@@ -179,13 +180,16 @@ static asys_offset_t asys_string_reverse_find_predicate_base(
 		const char* string, asys_string_find_predicate_t predicate,
 		asys_bool_t inverse) {
 
-	asys_size_t i, last = -1;
+	asys_size_t i;
+	asys_offset_t last = -1;
+
+	if(!!predicate('\0') != inverse) {
+		return (asys_offset_t) asys_string_length(string);
+	}
 
 	for(i = 0; string[i]; ++i) {
 		if(!!predicate(string[i]) != inverse) last = i;
 	}
-
-	if(!!predicate('\0') != inverse) return (asys_offset_t) i;
 
 	return (asys_offset_t) last;
 }
@@ -312,13 +316,14 @@ asys_native_long_t asys_string_to_native_long(
 	asys_size_t i = len;
 	asys_native_long_t ret = 0;
 	asys_bool_t negate = (string[0] == '-');
+	asys_size_t negate_offset = (asys_size_t) negate;
 
 	while(string[i - 1] < '0' || string[i - 1] > '9') i--;
 
 	/* TODO: Work out const-ness on end ptr. */
 	if(end) *end = (char*) &string[i];
 
-	for(; i > (negate ? 1 : 0); --i) {
+	for(; i > negate_offset; --i) {
 		asys_native_long_t v;
 		char c = string[i - 1];
 

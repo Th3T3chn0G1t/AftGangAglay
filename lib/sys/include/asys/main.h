@@ -16,6 +16,8 @@
 #endif
 
 #ifdef ASYS_WIN32
+extern const char* asys_global_win32_class_name;
+
 enum asys_result asys_win32_register_class(void*, void*);
 #endif
 

@@ -26,7 +26,10 @@ enum aga_config_node_type {
 	AGA_NONE,
 	AGA_STRING,
 	AGA_INTEGER,
-	AGA_FLOAT
+	AGA_FLOAT,
+
+	/* Convert `/' a string node into `\' when on Win32 platform. */
+	AGA_PATH
 };
 
 typedef asys_native_long_t aga_config_int_t;
@@ -53,8 +56,15 @@ enum asys_result aga_config_new(
 
 enum asys_result aga_config_delete(struct aga_config_node*);
 
+/*
+ * NOTE: `aga_config_variable' and callers (all lookup functions) output a
+ *		 Heap allocated string for `type == AGA_PATH'. This may change once
+ *		 Path type nodes are natively implemented.
+ */
+
 asys_bool_t aga_config_variable(
-		const char*, struct aga_config_node*, enum aga_config_node_type, void*);
+		const char*, struct aga_config_node*, enum aga_config_node_type,
+		void*);
 
 enum asys_result aga_config_lookup_raw(
 		struct aga_config_node*, const char**, asys_size_t,

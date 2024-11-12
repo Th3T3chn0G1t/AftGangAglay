@@ -8,7 +8,7 @@
 
 #include <asys/base.h>
 
-#ifdef ASYS_STDC
+#if defined(ASYS_STDC) || defined(ASYS_FORCE_STD_INCLUDE) /* TODO: Temp!*/
 # include <math.h>
 # ifndef M_PI /* TODO: Remove reliance on this */
 #  define M_PI (3.14159265358979323846)

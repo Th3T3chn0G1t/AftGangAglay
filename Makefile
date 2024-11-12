@@ -6,6 +6,9 @@
 default: all
 
 RM = del
+# TODO: Has VisualC always allowed `#include <foo/bar.h>' over
+# 		`#include <foo\bar.h>'? Do we need a macro like:
+# 		`#include INCLUDE_PATH(foo, bar)'?
 SEP = \\
 
 LIB =

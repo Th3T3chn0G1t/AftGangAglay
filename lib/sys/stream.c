@@ -30,6 +30,11 @@ enum asys_result asys_stream_new(
 		return result;
 	}
 
+	/*asys_log(
+			__FILE__,
+			"_lopen(\"%s\", OF_READ) -> return: %d, errno: %s",
+			path, stream->hfile, strerror(errno));*/
+
 	return ASYS_RESULT_OK;
 #elif defined(ASYS_UNIX)
 	stream->fd = 0;
@@ -142,10 +147,23 @@ asys_stream_native_t asys_stream_native(struct asys_stream* stream) {
 #endif
 }
 
+extern void* _fdopen(int, const char*);
 void* asys_stream_stdc(struct asys_stream* stream) {
 #ifdef ASYS_WIN32
-	(void) stream;
-	return 0;
+	void* file;
+	int handle;
+
+	if((handle = _get_osfhandle(stream->hfile)) == -1) {
+		asys_log_result(__FILE__, "_get_osfhandle", ASYS_RESULT_ERROR);
+		return 0;
+	}
+
+	if(!(file = _fdopen(handle, "r"))) {
+		asys_log_result(__FILE__, "_fdopen", ASYS_RESULT_ERROR);
+		return 0;
+	}
+
+	return file;
 #elif defined(ASYS_UNIX)
 	return fdopen(stream->fd, "r");
 #elif defined(ASYS_STDC)
