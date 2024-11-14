@@ -58,7 +58,7 @@ void asys_log(const char* file, const char* format, ...) {
 		do {
 			if(!stdout_handle) break;
 
-			WriteConsole(stdout_handle, buffer, length, 0, 0);
+			WriteConsole(stdout_handle, buffer, (DWORD) length, 0, 0);
 			WriteConsole(stdout_handle, "\r\n", sizeof("\r\n") - 1, 0, 0);
 		} while(0);
 	}

@@ -60,7 +60,7 @@ $(PGEN_SRC): $(PY_HDR)
 
 $(PGEN_OUT): $(ASYS_OUT)
 $(PGEN_OUT): $(PGEN_OBJ)
-	$(CCLD)
+	$(LINK)
 
 PYGRAM = $(PY)graminit.c $(PYI)python$(SEP)graminit.h
 

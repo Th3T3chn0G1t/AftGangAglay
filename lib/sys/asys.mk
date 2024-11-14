@@ -15,8 +15,8 @@ ASYSI = $(ASYS)include$(SEP)
 ASYSH = $(ASYSI)asys$(SEP)
 
 ASYS1 = $(ASYS)stream.c $(ASYS)result.c $(ASYS)string.c $(ASYS)memory.c
-ASYS2 = $(ASYS)error.c $(ASYS)log.c $(ASYS)result.c $(ASYS)file.c
-ASYS3 = $(ASYS)getopt.c $(ASYS)detail.c
+ASYS2 = $(ASYS)error.c $(ASYS)log.c $(ASYS)file.c $(ASYS)detail.c
+ASYS3 = $(ASYS)getopt.c
 
 ASYSH1 = $(ASYSH)base.h $(ASYSH)stream.h $(ASYSH)result.h $(ASYSH)system.h
 ASYSH2 = $(ASYSH)string.h $(ASYSH)memory.h $(ASYSH)error.h $(ASYSH)log.h

@@ -153,7 +153,7 @@ void* asys_stream_stdc(struct asys_stream* stream) {
 	void* file;
 	int handle;
 
-	if((handle = _get_osfhandle(stream->hfile)) == -1) {
+	if((handle = (int) _get_osfhandle(stream->hfile)) == -1) {
 		asys_log_result(__FILE__, "_get_osfhandle", ASYS_RESULT_ERROR);
 		return 0;
 	}
@@ -203,7 +203,7 @@ enum asys_result asys_stream_seek(
 
 	int seek_whence = asys_stream_whence_to_win32(whence);
 
-	if(_llseek(stream->hfile, offset, seek_whence) == HFILE_ERROR) {
+	if(_llseek(stream->hfile, (LONG) offset, seek_whence) == HFILE_ERROR) {
 		result = ASYS_RESULT_ERROR;
 		asys_log_result(__FILE__, "_llseek", result);
 		return result;
@@ -280,7 +280,7 @@ enum asys_result asys_stream_read(
 	enum asys_result result;
 
 	/* TODO: Need to detect EOF for Python readline. */
-	long read_result = _hread(stream->hfile, buffer, count);
+	long read_result = _hread(stream->hfile, buffer, (LONG) count);
 	if(read_count) *read_count = read_result;
 
 	if(read_result == -1L) {
@@ -422,7 +422,7 @@ enum asys_result asys_stream_write(
 # ifdef ASYS_WIN32
 	enum asys_result result;
 
-	if(_hwrite(stream->hfile, buffer, count) == -1L) {
+	if(_hwrite(stream->hfile, buffer, (long) count) == -1L) {
 		result = ASYS_RESULT_ERROR;
 		asys_log_result(__FILE__, "_hwrite", result);
 		return result;

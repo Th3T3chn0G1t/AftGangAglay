@@ -40,7 +40,7 @@ $(AGA_OBJ): $(AGA_HDR)
 $(AGA_OUT): $(ASYS_OUT) $(APRO_OUT)
 $(AGA_OUT): $(PY_OUT) $(WWW_OUT) $(DEV_LIBS)
 $(AGA_OUT): $(AGA_OBJ)
-	$(GL_CCLD)
+	$(LINK)
 
 $(AGA)script.c: $(PYGRAM)
 

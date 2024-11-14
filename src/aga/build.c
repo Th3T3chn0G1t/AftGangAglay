@@ -763,7 +763,8 @@ enum asys_result aga_build(struct aga_settings* opts) {
 		result = asys_stream_tell(&stream, &offset);
 		if(result) goto cleanup;
 
-		header.size = offset - sizeof(struct aga_resource_pack_header);
+		header.size =
+			(asys_uint_t) offset - sizeof(struct aga_resource_pack_header);
 
 		result = asys_stream_seek(&stream, ASYS_SEEK_SET, 0);
 		if(result) goto cleanup;
@@ -819,11 +820,15 @@ enum asys_result aga_build(struct aga_settings* opts) {
 }
 
 #else
+# include <aga/build.h>
+
+# include <asys/log.h>
 
 enum asys_result aga_build(struct aga_settings* opts) {
 	(void) opts;
 
-	asys_log(__FILE__, "err: Project building is only supported in dev builds");
+	asys_log(
+		__FILE__, "err: Project building is only supported in dev builds");
 
 	return ASYS_RESULT_ERROR;
 }

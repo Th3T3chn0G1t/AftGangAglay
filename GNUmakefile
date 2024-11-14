@@ -25,13 +25,13 @@ else
 endif
 AR = ar -rc $@ $^
 
-CCLD_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS)
-CCLD_LDLIBS = $(LDLIBS) $(SET_LDLIBS)
-CCLD = $(CC) $(CCLD_LDFLAGS) -o $@ $^ $(CCLD_LDLIBS)
+LINK_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS)
+LINK_LDLIBS = $(LDLIBS) $(SET_LDLIBS)
+LINK = $(CC) $(LINK_LDFLAGS) -o $@ $^ $(LINK_LDLIBS)
 
-GL_CCLD_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS) $(GL_LDFLAGS)
-GL_CCLD_LDLIBS = $(LDLIBS) $(SET_LDLIBS) $(GL_LDLIBS)
-GL_CCLD = $(CC) $(GL_CCLD_LDFLAGS) -o $@ $^ $(GL_CCLD_LDLIBS)
+GL_LINK_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS) $(GL_LDFLAGS)
+GL_LINK_LDLIBS = $(LDLIBS) $(SET_LDLIBS) $(GL_LDLIBS)
+GL_LINK = $(CC) $(GL_LINK_LDFLAGS) -o $@ $^ $(GL_LINK_LDLIBS)
 
 ifdef DEBUG
 	SET_CFLAGS = -g
@@ -44,7 +44,7 @@ ifdef DEVBUILD
 endif
 
 ifdef MAINTAINER
-	SET_CFLAGS += -ansi -pedantic -pedantic-errors -Wall -Wextra -Werror
+	SET_CFLAGS += -ansi -pedantic -pedantic-errors -Wall -W -Werror
 endif
 
 SET_LDFLAGS =
@@ -62,6 +62,7 @@ ifdef WINDOWS
 	GL_LDLIBS += -lcomdlg32
 
 	# TODO: Does this work under clang invoking LINK?
+	# NOTE: `-Wl' is not historically accurate.
 	SET_LDFLAGS += -Wl,-subsystem,windows
 	SET_LDLIBS += -luser32 -lkernel32 -lgdi32
 else

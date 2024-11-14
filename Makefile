@@ -5,74 +5,31 @@
 
 default: all
 
+### Shell setup.
+
 RM = del
 # TODO: Has VisualC always allowed `#include <foo/bar.h>' over
 # 		`#include <foo\bar.h>'? Do we need a macro like:
 # 		`#include INCLUDE_PATH(foo, bar)'?
 SEP = \\
 
+### Preferred artefact names.
+
 LIB =
 OBJ = .obj
 EXE = .exe
 A = .lib
 
-CC = $(CC) /nologo
+### Linkage.
 
-AR = lib /nologo /out:$@ $**
+AR = LIB /NOLOGO /OUT:$@ $**
 
-CCLD_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS)
-CCLD_LDLIBS = $(LDLIBS) $(SET_LDLIBS)
-CCLD = $(CC) /Fe:$@ $** /link $(CCLD_LDFLAGS) $(CCLD_LDLIBS)
+LDLIBS = $(LDLIBS) user32.lib kernel32.lib gdi32.lib shell32.lib winmm.lib
+LDLIBS = $(LDLIBS) opengl32.lib glu32.lib comdlg32.lib
 
-GL_CCLD_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS) $(GL_LDFLAGS)
-GL_CCLD_LDLIBS = $(LDLIBS) $(SET_LDLIBS) $(GL_LDLIBS)
-GL_CCLD = $(CC) /Fe:$@ $** /link $(GL_CCLD_LDFLAGS) $(GL_CCLD_LDLIBS)
+LINK = LINK /NOLOGO /OUT:$@ $** $(LDFLAGS) $(LDLIBS)
 
-SET_CFLAGS =
-
-!ifdef DEBUG
-SET_CFLAGS = $(SET_CFLAGS) /Od /Zi /MTd
-!else
-SET_CFLAGS = $(SET_CFLAGS) /O2 /DNDEBUG /MT
-# NOTE: Fixes register spilling diagnostics.
-SET_CFLAGS = $(SET_CFLAGS) /fp:fast
-!endif
-
-!ifdef DEVBUILD
-SET_CFLAGS = $(SET_CFLAGS) /DAGA_DEVBUILD
-!endif
-
-# TODO: Use pragma comment lib under `_MSC_VER' to simplify this? Should this
-#		File use Tools.ini?
-GL_LDLIBS = opengl32.lib glu32.lib shell32.lib winmm.lib
-GL_LDLIBS = $(GL_LDLIBS) comdlg32.lib
-
-SET_LDLIBS = user32.lib kernel32.lib gdi32.lib
-
-!ifdef MAINTAINER
-SET_CFLAGS = $(SET_CFLAGS) /Wall /WX
-
-# Padding
-SET_CFLAGS = $(SET_CFLAGS) /wd4820
-# Function was not inlined
-SET_CFLAGS = $(SET_CFLAGS) /wd4710
-# Spectre mitigations
-SET_CFLAGS = $(SET_CFLAGS) /wd5045
-# Function selected for automatic inlining
-SET_CFLAGS = $(SET_CFLAGS) /wd4711
-# Assignment inside conditional expression (even with double paren)
-SET_CFLAGS = $(SET_CFLAGS) /wd4706
-# Non-explicitly handled enum value (Doesn't count `default:')
-SET_CFLAGS = $(SET_CFLAGS) /wd4061
-# Conditional expression is constant (Even if block contains a `break')
-SET_CFLAGS = $(SET_CFLAGS) /wd4127
-!endif
-
-SET_CFLAGS = $(SET_CFLAGS) $(GL_CFLAGS)
-SET_CFLAGS = $(SET_CFLAGS) /I$(APRO) /I$(ASYSI) /I$(PYI) /I$(WWWH) $(DEV_INC)
-SET_CFLAGS = $(SET_CFLAGS) /Iinclude
-SET_CFLAGS = $(SET_CFLAGS) /Ivendor$(SEP)libtiff$(SEP)
-SET_CFLAGS = $(SET_CFLAGS) /DAGA_VERSION=\"$(VERSION)\"
+### Modules.
 
 !include lib/sys/asys.mk
 !include lib/prof/apro.mk
@@ -83,17 +40,56 @@ SET_CFLAGS = $(SET_CFLAGS) /DAGA_VERSION=\"$(VERSION)\"
 !include vendor/tiff.mk
 
 !ifdef DEVBUILD
+LDLIBS = $(LDLIBS) $(GLM_OUT) $(TIF_OUT)
 DEV_LIBS = $(GLM_OUT) $(TIF_OUT)
 DEV_HDR = $(GLM_HDR) $(TIF_HDR)
 DEV_INC = /I$(GLMH) /I$(TIFI)
 !endif
 
-SET_LDFLAGS = /SUBSYSTEM:WINDOWS
+# TODO: Remove once pgen has been switched to `asys_main'.
+LDFLAGS = $(LDFLAGS) /SUBSYSTEM:WINDOWS
 
 !include src/aga.mk
 
+### Compilation.
+
+!ifdef DEBUG
+CFLAGS = $(CFLAGS) /Od /Zi
+!else
+CFLAGS = $(CFLAGS) /Ox /DNDEBUG
+# NOTE: Fixes register spilling diagnostics.
+CFLAGS = $(CFLAGS) /fp:fast
+!endif
+
+!ifdef DEVBUILD
+CFLAGS = $(CFLAGS) /DAGA_DEVBUILD
+!endif
+
+!ifdef MAINTAINER
+CFLAGS = $(CFLAGS) /Wall /WX
+
+# Padding
+CFLAGS = $(CFLAGS) /wd4820
+# Function was not inlined
+CFLAGS = $(CFLAGS) /wd4710
+# Spectre mitigations
+CFLAGS = $(CFLAGS) /wd5045
+# Function selected for automatic inlining
+CFLAGS = $(CFLAGS) /wd4711
+# Assignment inside conditional expression (even with double paren)
+CFLAGS = $(CFLAGS) /wd4706
+# Non-explicitly handled enum value (Doesn't count `default:')
+CFLAGS = $(CFLAGS) /wd4061
+# Conditional expression is constant (Even if block contains a `break')
+CFLAGS = $(CFLAGS) /wd4127
+!endif
+
+CFLAGS = $(CFLAGS) /I$(APRO) /I$(ASYSI) /I$(PYI) /I$(WWWH) $(DEV_INC)
+CFLAGS = $(CFLAGS) /Iinclude /Ivendor$(SEP)libtiff$(SEP)
+CFLAGS = $(CFLAGS) /DAGA_VERSION=\"$(VERSION)\"
+
 .c$(OBJ):
-	$(CC) /c $(CFLAGS) $(SET_CFLAGS) /Fo:$@ $<
+	CL /nologo /c $(CFLAGS) /Fo:$@ $<
 
 all: $(AGA_OUT)
 
