@@ -398,6 +398,8 @@ enum asys_result aga_config_new(
 void aga_free_node(struct aga_config_node* node) {
 	asys_size_t i;
 
+	if(!node) return;
+
 	for(i = 0; i < node->len; ++i) {
 		aga_free_node(&node->children[i]);
 	}

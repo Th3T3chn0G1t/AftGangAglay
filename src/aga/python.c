@@ -24,47 +24,16 @@ void py_fatal(const char* msg) {
 enum asys_result py_open_r(const char* path, struct asys_stream** stream) {
 	enum asys_result result;
 
-	asys_size_t i;
+	struct aga_resource* resource;
 
-	for(i = 0; i < aga_global_pack->count; ++i) {
-		struct aga_resource* resource = &aga_global_pack->resources[i];
+	result = aga_resource_pack_lookup(aga_global_pack, path, &resource);
+	if(result) return result;
 
-		if(!resource->config) continue;
+	result = aga_resource_seek(resource, stream);
+	if(result) return result;
 
-		if(asys_string_equal(path, resource->config->name)) {
-			result = aga_resource_seek(resource, stream);
-			if(result) return result;
-
-			return ASYS_RESULT_OK;
-		}
-	}
-
-	return ASYS_RESULT_MISSING_KEY;
+	return ASYS_RESULT_OK;
 }
-/*void* py_open_r(const char* path) {
-	struct asys_stream* stream;
-	asys_size_t i;
-
-	for(i = 0; i < aga_global_pack->count; ++i) {
-		struct aga_resource* resource = &aga_global_pack->resources[i];
-
-		if(!resource->config) continue;
-
-		if(asys_string_equal(path, resource->config->name)) {
-			enum asys_result result;
-
-			result = aga_resource_seek(resource, &stream);
-			if(result) {
-				asys_log_result(__FILE__, "aga_resource_seek", result);
-				return 0;
-			}
-
-			return stream->fp;
-		}
-	}
-
-	return 0;
-}*/
 
 asys_bool_t aga_arg_list(
 		const struct py_object* args, enum py_type type) {

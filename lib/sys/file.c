@@ -296,7 +296,8 @@ enum asys_result asys_path_iterate(
 	 * 		 				/v4.0/src/TOOLS/BLD/INC/DOS.H
 	 */
 
-	static asys_fixed_buffer_t buffer = { 0 };
+	/* NOTE: This cannot be static as this function recurses. */
+asys_fixed_buffer_t buffer = { 0 };
 
 	enum asys_result result;
 	enum asys_result held_result = ASYS_RESULT_OK;

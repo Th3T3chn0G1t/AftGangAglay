@@ -389,17 +389,21 @@ static enum asys_result aga_build_conf_file(
 		const char* path, enum aga_file_kind kind, struct asys_stream* stream,
 		asys_size_t* offset) {
 
-	static asys_fixed_buffer_t buffer = { 0 };
+	static asys_fixed_buffer_t buffer;
+#ifdef ASYS_WIN32
+	static asys_fixed_buffer_t standard_path;
+#endif
 
 	enum asys_result result;
 
 	union asys_file_attribute attr;
 
+	asys_size_t i;
+
 	/* Skip input files which don't match kind. */
 	if(!aga_build_path_matches_kind(path, kind)) return ASYS_RESULT_OK;
 
 	buffer[0] = 0;
-
 	asys_string_concatenate(buffer, path);
 
 	/* Use the base file as the input for SGML/RAW inputs. */
@@ -407,8 +411,21 @@ static enum asys_result aga_build_conf_file(
 		asys_string_concatenate(buffer, AGA_RAW_SUFFIX);
 	}
 
+#ifdef ASYS_WIN32
+	/* TODO: Make a function for this. */
+	for(i = 0; buffer[i]; ++i) {
+		if(buffer[i] == '\\') standard_path[i] = '/';
+		else standard_path[i] = buffer[i];
+	}
+
+	standard_path[i] = 0;
+
+	result = aga_fprintf_add(stream, 1, "<item name=\"%s\">\n", standard_path);
+	if(result) return result;
+#else
 	result = aga_fprintf_add(stream, 1, "<item name=\"%s\">\n", buffer);
     if(result) return result;
+#endif
 
 	/* Unpleasant but neccesary. */
 #define agab_(indent, name, type, format, parameter) \

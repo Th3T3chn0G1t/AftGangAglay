@@ -36,7 +36,7 @@ void asys_memory_copy(void* to, const void* from, asys_size_t count) {
 }
 
 /* TODO: Temporary -- make a better tracker. */
-#ifdef ASYS_WIN32
+#if defined(ASYS_WIN32) && defined(ASYS_TRACK_MEMORY)
 static asys_size_t aga_global_memory_use = 0;
 #endif
 
@@ -47,12 +47,14 @@ void* asys_memory_allocate(asys_size_t size) {
 	pointer = GlobalAlloc(0, size);
 	if(!pointer) asys_log_result(__FILE__, "GlobalAlloc", ASYS_RESULT_OOM);
 
+# ifdef ASYS_TRACK_MEMORY
 	aga_global_memory_use += size;
 	asys_log(
 			__FILE__,
 			"Allocated block of size `" ASYS_NATIVE_ULONG_FORMAT "' "
 			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
 			size, aga_global_memory_use);
+# endif
 
 	return pointer;
 #elif defined(ASYS_STDC)
@@ -82,12 +84,14 @@ void* asys_memory_allocate_zero(asys_size_t count, asys_size_t size) {
 	pointer = GlobalAlloc(GMEM_ZEROINIT, count * size);
 	if(!pointer) asys_log_result(__FILE__, "GlobalAlloc", ASYS_RESULT_OOM);
 
+# ifdef ASYS_TRACK_MEMORY
 	aga_global_memory_use += size;
 	asys_log(
 			__FILE__,
 			"Allocated block of size `" ASYS_NATIVE_ULONG_FORMAT "' "
 			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
 			size, aga_global_memory_use);
+# endif
 
 	return pointer;
 #elif defined(ASYS_STDC)
@@ -110,24 +114,30 @@ void* asys_memory_allocate_zero(asys_size_t count, asys_size_t size) {
 
 void asys_memory_free(void* pointer) {
 #ifdef ASYS_WIN32
+# ifdef ASYS_TRACK_MEMORY
 	asys_size_t size;
+# endif
 
 	if(!pointer) return;
 
+# ifdef ASYS_TRACK_MEMORY
 	if(!(size = GlobalSize(pointer))) {
 		asys_log_result(__FILE__, "GlobalSize", ASYS_RESULT_ERROR);
 	}
+# endif
 
 	if(GlobalFree(pointer)) {
 		asys_log_result(__FILE__, "GlobalFree", ASYS_RESULT_ERROR);
 	}
 
+# ifdef ASYS_TRACK_MEMORY
 	aga_global_memory_use -= size;
 	asys_log(
 			__FILE__,
 			"Freed block of size `" ASYS_NATIVE_ULONG_FORMAT "' "
 			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
 			size, aga_global_memory_use);
+# endif
 #elif defined(ASYS_STDC)
 	free(pointer);
 #elif defined(ASYS_UNIX)
@@ -143,29 +153,38 @@ void asys_memory_free(void* pointer) {
  */
 void* asys_memory_reallocate(void* pointer, asys_size_t size) {
 #ifdef ASYS_WIN32
+# ifdef ASYS_TRACK_MEMORY
 	asys_size_t old_size;
 	asys_isize_t delta;
+# endif
 
 	if(!pointer) {
+# ifdef ASYS_TRACK_MEMORY
 		old_size = 0;
 		delta = size;
+# endif
 
 		if(!(pointer = GlobalAlloc(0, size))) {
 			asys_log_result(__FILE__, "GlobalAlloc", ASYS_RESULT_OOM);
 		}
 	}
 	else {
+# ifdef ASYS_TRACK_MEMORY
 		if(!(old_size = GlobalSize(pointer))) {
 			asys_log_result(__FILE__, "GlobalSize", ASYS_RESULT_ERROR);
 		}
+# endif
 
+# ifdef ASYS_TRACK_MEMORY
 		delta = size - old_size;
+# endif
 
 		if(!(pointer = GlobalReAlloc(pointer, size, GMEM_MOVEABLE))) {
 			asys_log_result(__FILE__, "GlobalReAlloc", ASYS_RESULT_OOM);
 		}
 	}
 
+# ifdef ASYS_TRACK_MEMORY
 	/* TODO: Message and don't adjust size on allocation failure. */
 	aga_global_memory_use += delta;
 	asys_log(
@@ -174,6 +193,7 @@ void* asys_memory_reallocate(void* pointer, asys_size_t size) {
 			"to `" ASYS_NATIVE_ULONG_FORMAT "' "
 			"(total `" ASYS_NATIVE_ULONG_FORMAT "')",
 			old_size, size, aga_global_memory_use);
+# endif
 
 	return pointer;
 #elif defined(ASYS_STDC)

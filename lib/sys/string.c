@@ -304,14 +304,15 @@ asys_native_long_t asys_string_to_native_long(
 		const char* string, char** end) {
 
 /* TODO: Did Windows 3.1 have a native way of doing this? */
-#ifdef ASYS_STDC
-# ifdef ASYS_LP32
-	return strtoll(string, end, 10);
-# else
-	return strtol(string, end, 10);
-# endif
+#ifdef ASYS_LP32
+	return strtoll(string, end, 0);
 #else
-	/* TODO: This might be broken. */
+	return strtol(string, end, 0);
+#endif
+	/* TODO: This is broken. */
+	/* TODO: Work out const-ness on end ptr. */
+
+	/*
 	asys_size_t len = asys_string_length(string);
 	asys_size_t i = len;
 	asys_native_long_t ret = 0;
@@ -320,7 +321,6 @@ asys_native_long_t asys_string_to_native_long(
 
 	while(string[i - 1] < '0' || string[i - 1] > '9') i--;
 
-	/* TODO: Work out const-ness on end ptr. */
 	if(end) *end = (char*) &string[i];
 
 	for(; i > negate_offset; --i) {
@@ -333,8 +333,12 @@ asys_native_long_t asys_string_to_native_long(
 		ret += (c - '0') * v;
 	}
 
-	return negate ? -ret : ret;
-#endif
+	if(negate) ret = -ret;
+
+	asys_log(__FILE__, "%s -> " ASYS_NATIVE_LONG_FORMAT, string, ret);
+
+	return ret;
+	 */
 }
 
 double asys_string_to_double(const char* string, char** end) {

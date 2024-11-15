@@ -37,18 +37,37 @@ enum asys_result aga_resource_pack_lookup(
 
 	for(i = 0; i < pack->count; ++i) {
 		struct aga_resource* resource = &pack->resources[i];
+		const char* name;
 
 		if(!resource->config) continue;
 
-		if(asys_string_equal(resource->config->name, path)) {
+		name = resource->config->name;
+
+		if(asys_string_equal(name, path)) {
 			*out = &pack->resources[i];
 			return ASYS_RESULT_OK;
 		}
+#ifdef ASYS_WIN32
+		else {
+			asys_size_t j;
+
+			for(j = 0; path[j] && name[j]; ++j) {
+				if(path[j] == name[j]) continue;
+				else if(path[j] == '\\' && name[j] == '/') continue;
+				else break;
+			}
+
+			if(path[j] == name[j]) {
+				*out = &pack->resources[i];
+				return ASYS_RESULT_OK;
+			}
+		}
+#endif
 	}
 
 	asys_log(__FILE__, "err: Path `%s' not found in resource pack", path);
 
-	return ASYS_RESULT_BAD_PARAM;
+	return ASYS_RESULT_MISSING_KEY;
 }
 
 enum asys_result aga_resource_pack_new(

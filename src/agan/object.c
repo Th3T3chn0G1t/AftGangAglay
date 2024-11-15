@@ -200,6 +200,11 @@ static asys_bool_t agan_mkobj_model(
 			 * TODO: Handle missing textures etc. gracefully - default/
 			 *       Procedural resources?
 			 */
+			/*
+			 * TODO: Way to deliberately sweep resources once a certain
+			 * 		 Resource type memory cap is reached? Super big RAM spike
+			 * 		 When a scene loads all of these.
+			 */
 			result = aga_resource_new(pack, texture_path, &res);
 			if(aga_script_err("aga_resource_new", result)) return ASYS_TRUE;
 
@@ -518,7 +523,7 @@ struct py_object* agan_mkobj(
 	struct agan_object* obj;
 	struct py_int* v;
 	struct py_object* retval;
-	struct aga_config_node conf;
+	struct aga_config_node conf = { 0 };
 
 	struct asys_stream* stream;
 

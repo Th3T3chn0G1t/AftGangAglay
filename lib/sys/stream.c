@@ -147,19 +147,23 @@ asys_stream_native_t asys_stream_native(struct asys_stream* stream) {
 #endif
 }
 
-extern void* _fdopen(int, const char*);
+#ifdef ASYS_WIN32
+# include <stdio.h>
+# include <fcntl.h>
+#endif
 void* asys_stream_stdc(struct asys_stream* stream) {
 #ifdef ASYS_WIN32
 	void* file;
-	int handle;
+	int fd;
 
-	if((handle = (int) _get_osfhandle(stream->hfile)) == -1) {
-		asys_log_result(__FILE__, "_get_osfhandle", ASYS_RESULT_ERROR);
+	fd = _open_osfhandle((asys_native_long_t) stream->hfile , _O_RDONLY);
+	if(fd == -1) {
+		asys_log_result(__FILE__, "_open_osfhandle", ASYS_RESULT_ERROR);
 		return 0;
 	}
 
-	if(!(file = _fdopen(handle, "r"))) {
-		asys_log_result(__FILE__, "_fdopen", ASYS_RESULT_ERROR);
+	if(!(file = fdopen(fd, "r"))) {
+		asys_log_result(__FILE__, "fdopen", ASYS_RESULT_ERROR);
 		return 0;
 	}
 
@@ -360,34 +364,50 @@ enum asys_result asys_stream_attribute(
 	switch(type) {
 		default: return ASYS_RESULT_BAD_PARAM;
 
+		/*
+		 * NOTE: The era-accurate call (`_getftime') no longer exists in
+		 * 		 Modern win32 so we need this mess.
+		 */
 		case ASYS_FILE_MODIFIED: {
-			/*
-			 * TODO: The era-accurate call (`_getftime') no longer exists and
-			 * 		 The modern equivalent takes `HANDLE' (`void*') not `HFILE'
-			 * 		 (`int').
-			 */
-			/*
-			if(!GetFileTime(stream->hfile)) {
+			ULARGE_INTEGER integer;
+			FILETIME modified;
+			HANDLE handle;
+
+			handle = (void*) (asys_native_long_t) stream->hfile;
+			if(!GetFileTime(handle, 0, 0, &modified)) {
 				result = ASYS_RESULT_ERROR;
-				asys_log_result_path(__FILE__, "GetFileTime", result);
+				asys_log_result(__FILE__, "GetFileTime", result);
 				return result;
 			}
-			 */
-			attribute->modified = ASYS_MAKE_NATIVE_LONG(0);
+
+			integer.LowPart = modified.dwLowDateTime;
+			integer.HighPart = modified.dwHighDateTime;
+			attribute->modified = integer.QuadPart;
 
 			return ASYS_RESULT_OK;
 		}
 
+		/*
+		 * NOTE: The era-accurate call (`_filelength') was changed at some
+		 * 		 Point to use `fd's rather than `HFILE' so it cannot be used
+		 * 		 On modern Windows.
+		 */
 		case ASYS_FILE_LENGTH: {
-			long length;
+			ULARGE_INTEGER integer;
+			DWORD low;
+			HANDLE handle;
 
-			if((length = _filelength(stream->hfile)) == -1) {
+			handle = (void*) (asys_native_long_t) stream->hfile;
+			low = GetFileSize(handle, &integer.HighPart);
+			if(low == INVALID_FILE_SIZE) {
 				result = ASYS_RESULT_ERROR;
-				asys_log_result(__FILE__, "_filelength", result);
+				asys_log_result(__FILE__, "GetFileSize", result);
 				return result;
 			}
 
-			attribute->length = length;
+			integer.LowPart = low;
+
+			attribute->length = integer.QuadPart;
 
 			return ASYS_RESULT_OK;
 		}
