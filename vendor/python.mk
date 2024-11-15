@@ -5,9 +5,9 @@ PY = vendor$(SEP)python$(SEP)src$(SEP)
 PYO = $(PY)object$(SEP)
 PYM = $(PY)module$(SEP)
 
-PYI = vendor$(SEP)python$(SEP)include$(SEP)
+PY_INCLUDE = vendor$(SEP)python$(SEP)include$(SEP)
 
-PYH = $(PYI)python$(SEP)
+PYH = $(PY_INCLUDE)python$(SEP)
 PYOH = $(PYH)object$(SEP)
 PYMH = $(PYH)module$(SEP)
 
@@ -45,7 +45,7 @@ $(PY_OBJ): $(PY_HDR)
 
 $(PY_OUT): $(ASYS_OUT) $(APRO_OUT)
 $(PY_OUT): $(PY_OBJ)
-	$(AR)
+	$(STATIC)
 
 PGEN1 = $(PY)pgenmain.c $(PY)acceler.c $(PY)printgrammar.c
 PGEN2 = $(PY)node.c $(PY)parser.c $(PY)parsetok.c $(PY)tokenizer.c $(PY)pgen.c
@@ -62,7 +62,7 @@ $(PGEN_OUT): $(ASYS_OUT)
 $(PGEN_OUT): $(PGEN_OBJ)
 	$(LINK)
 
-PYGRAM = $(PY)graminit.c $(PYI)python$(SEP)graminit.h
+PYGRAM = $(PY)graminit.c $(PYH)graminit.h
 
 PYGRAM_SOURCE = $(PY)gr$(SEP)Grammar
 

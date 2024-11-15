@@ -3,37 +3,35 @@
 
 # TODO: Need to document tiff in vendor README.
 
-TIF = vendor$(SEP)libtiff$(SEP)libtiff$(SEP)
-TIFI = $(TIF)
-TIFS = $(TIF)tif_
-TIFH = $(TIFS)
+TIFF = vendor$(SEP)libtiff$(SEP)libtiff$(SEP)
+TIFF_INCLUDE = $(TIFF)
+TIFFS = $(TIFF)tif_
 
-TIF_SRC1 = $(TIFS)aux.c $(TIFS)close.c $(TIFS)compress.c $(TIFS)codec.c
-TIF_SRC2 = $(TIFS)dir.c $(TIFS)dirinfo.c $(TIFS)dirread.c $(TIFS)dirwrite.c
-TIF_SRC3 = $(TIFS)dumpmode.c $(TIFS)error.c
-TIF_SRC4 = $(TIFS)getimage.c $(TIFS)flush.c $(TIFS)lzw.c
-TIF_SRC5 = $(TIFS)next.c $(TIFS)open.c $(TIFS)packbits.c $(TIFS)predict.c
-TIF_SRC6 = $(TIFS)read.c $(TIFS)swab.c $(TIFS)strip.c
-TIF_SRC7 = $(TIFS)thunder.c $(TIFS)tile.c $(TIFS)platform.c $(TIFS)version.c
-TIF_SRC8 = $(TIFS)warning.c $(TIFS)write.c
-TIF_SRC9 = $(TIF_SRC1) $(TIF_SRC2) $(TIF_SRC3) $(TIF_SRC4) $(TIF_SRC5)
+TIFF_SRC1 = $(TIFFS)close.c $(TIFFS)compress.c $(TIFFS)codec.c $(TIFFS)strip.c
+TIFF_SRC2 = $(TIFFS)dirinfo.c $(TIFFS)dirread.c $(TIFFS)warning.c $(TIFFS)aux.c
+TIFF_SRC3 = $(TIFFS)dumpmode.c $(TIFFS)error.c $(TIFFS)dir.c $(TIFFS)write.c
+TIFF_SRC4 = $(TIFFS)getimage.c $(TIFFS)flush.c $(TIFFS)lzw.c $(TIFFS)dirwrite.c
+TIFF_SRC5 = $(TIFFS)next.c $(TIFFS)open.c $(TIFFS)packbits.c $(TIFFS)predict.c
+TIFF_SRC6 = $(TIFFS)read.c $(TIFFS)swab.c $(TIFFS)version.c $(TIFFS)platform.c
+TIFF_SRC7 = $(TIFFS)thunder.c $(TIFFS)tile.c
+TIFF_SRC8 = $(TIFF_SRC1) $(TIFF_SRC2) $(TIFF_SRC3) $(TIFF_SRC4) $(TIFF_SRC5)
 
-TIF_SRC = $(TIF_SRC6) $(TIF_SRC7) $(TIF_SRC8) $(TIF_SRC9)
+TIFF_SRC = $(TIFF_SRC6) $(TIFF_SRC7) $(TIFF_SRC8)
 # TODO: HDR.
-TIF_HDR =
-TIF_OBJ = $(subst .c,$(OBJ),$(TIF_SRC))
+TIFF_HDR =
+TIFF_OBJ = $(subst .c,$(OBJ),$(TIFF_SRC))
 
-TIF_OUT = vendor$(SEP)$(LIB)tiff$(A)
+TIFF_OUT = vendor$(SEP)$(LIB)tiff$(A)
 
-$(TIF_OBJ): $(TIF_HDR)
+$(TIFF_OBJ): $(TIFF_HDR)
 
-$(TIF_OUT): $(TIF_OBJ)
-	$(AR)
+$(TIFF_OUT): $(TIFF_OBJ)
+	$(STATIC)
 
 # TODO: This doesn't seem to be working?
-$(TIFS)platform$(OBJ): $(TIFS)win3.c
-$(TIFS)platform$(OBJ): $(TIFS)unix.c
-$(TIFS)platform$(OBJ): $(TIFS)stdc.c
+$(TIFFS)platform$(OBJ): $(TIFFS)win3.c
+$(TIFFS)platform$(OBJ): $(TIFFS)unix.c
+$(TIFFS)platform$(OBJ): $(TIFFS)stdc.c
 
 clean_tiff:
-	$(RM) $(TIF_OBJ) $(TIF_OUT)
+	$(RM) $(TIFF_OBJ) $(TIFF_OUT)

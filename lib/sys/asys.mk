@@ -11,8 +11,9 @@
 #		Windows_3.1_Guide_to_Programming_1992.pdf, Page 331
 
 ASYS = lib$(SEP)sys$(SEP)
-ASYSI = $(ASYS)include$(SEP)
-ASYSH = $(ASYSI)asys$(SEP)
+ASYS_INCLUDE = $(ASYS)include$(SEP)
+
+ASYSH = $(ASYS_INCLUDE)asys$(SEP)
 
 ASYS1 = $(ASYS)stream.c $(ASYS)result.c $(ASYS)string.c $(ASYS)memory.c
 ASYS2 = $(ASYS)error.c $(ASYS)log.c $(ASYS)file.c $(ASYS)detail.c
@@ -32,7 +33,7 @@ ASYS_OUT = lib$(SEP)$(LIB)asys$(A)
 $(ASYS_OBJ): $(ASYS_HDR)
 
 $(ASYS_OUT): $(ASYS_OBJ)
-	$(AR)
+	$(STATIC)
 
 clean_asys:
 	$(RM) $(ASYS_OBJ) $(ASYS_OUT)

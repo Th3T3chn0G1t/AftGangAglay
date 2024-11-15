@@ -2,6 +2,8 @@
 # Copyright (C) 2023, 2024 Emily "TTG" Banerjee <prs.ttg+aga@pm.me>
 
 WWW = vendor$(SEP)www$(SEP)Library$(SEP)Implementation$(SEP)
+WWW_INCLUDE = $(WWW)
+
 WWWH = $(WWW)
 
 WWW_SRC1 = $(WWW)HTAccess.c $(WWW)HTAlert.c $(WWW)HTAnchor.c $(WWW)HTAtom.c
@@ -34,7 +36,7 @@ WWW_OUT = vendor$(SEP)$(LIB)www$(A)
 $(WWW_OBJ): $(WWW_HDR)
 
 $(WWW_OUT): $(WWW_OBJ)
-	$(AR)
+	$(STATIC)
 
 clean_www:
 	$(RM) $(WWW_OBJ) $(WWW_OUT)

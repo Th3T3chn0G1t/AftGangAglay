@@ -22,7 +22,7 @@ A = .lib
 
 ### Linkage.
 
-AR = LIB /NOLOGO /OUT:$@ $**
+STATIC = LIB /NOLOGO /OUT:$@ $**
 
 LDLIBS = $(LDLIBS) user32.lib kernel32.lib gdi32.lib shell32.lib winmm.lib
 LDLIBS = $(LDLIBS) opengl32.lib glu32.lib comdlg32.lib
@@ -38,13 +38,6 @@ LINK = LINK /NOLOGO /OUT:$@ $** $(LDFLAGS) $(LDLIBS)
 !include vendor/www.mk
 !include vendor/glm.mk
 !include vendor/tiff.mk
-
-!ifdef DEVBUILD
-LDLIBS = $(LDLIBS) $(GLM_OUT) $(TIF_OUT)
-DEV_LIBS = $(GLM_OUT) $(TIF_OUT)
-DEV_HDR = $(GLM_HDR) $(TIF_HDR)
-DEV_INC = /I$(GLMH) /I$(TIFI)
-!endif
 
 # TODO: Remove once pgen has been switched to `asys_main'.
 LDFLAGS = $(LDFLAGS) /SUBSYSTEM:WINDOWS
@@ -84,7 +77,9 @@ CFLAGS = $(CFLAGS) /wd4061
 CFLAGS = $(CFLAGS) /wd4127
 !endif
 
-CFLAGS = $(CFLAGS) /I$(APRO) /I$(ASYSI) /I$(PYI) /I$(WWWH) $(DEV_INC)
+CFLAGS = $(CFLAGS) /I$(APRO_INCLUDE) /I$(ASYS_INCLUDE) /I$(PY_INCLUDE)
+CFLAGS = $(CFLAGS) /I$(WWW_INCLUDE) /I$(GLM_INCLUDE) /I$(TIFF_INCLUDE)
+
 CFLAGS = $(CFLAGS) /Iinclude /Ivendor$(SEP)libtiff$(SEP)
 CFLAGS = $(CFLAGS) /DAGA_VERSION=\"$(VERSION)\"
 

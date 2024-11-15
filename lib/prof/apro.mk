@@ -3,6 +3,8 @@
 
 APRO = lib$(SEP)prof$(SEP)
 
+APRO_INCLUDE = $(APRO)
+
 APRO_SRC = $(APRO)apro.c
 APRO_HDR = $(APRO)apro.h
 APRO_OBJ = $(subst .c,$(OBJ),$(APRO_SRC))
@@ -12,7 +14,7 @@ APRO_OUT = lib$(SEP)$(LIB)apro$(A)
 $(APRO_OBJ): $(APRO_HDR)
 
 $(APRO_OUT): $(APRO_OBJ)
-	$(AR)
+	$(STATIC)
 
 clean_apro:
 	$(RM) $(APRO_OBJ) $(APRO_OUT)

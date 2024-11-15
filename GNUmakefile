@@ -23,32 +23,27 @@ else
 	RM = rm -f
 	SEP = /
 endif
-AR = ar -rc $@ $^
 
-LINK_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS)
-LINK_LDLIBS = $(LDLIBS) $(SET_LDLIBS)
-LINK = $(CC) $(LINK_LDFLAGS) -o $@ $^ $(LINK_LDLIBS)
+AR = ar
+STATIC = $(AR) -rc $@ $^
 
-GL_LINK_LDFLAGS = $(LDFLAGS) $(SET_LDFLAGS) $(GL_LDFLAGS)
-GL_LINK_LDLIBS = $(LDLIBS) $(SET_LDLIBS) $(GL_LDLIBS)
-GL_LINK = $(CC) $(GL_LINK_LDFLAGS) -o $@ $^ $(GL_LINK_LDLIBS)
+override LDLIBS += -lm
+
+LINK = $(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 ifdef DEBUG
-	SET_CFLAGS = -g
+	override CFLAGS += -g
 else
-	SET_CFLAGS = -O -DNDEBUG
+	override CFLAGS += -O -DNDEBUG
 endif
 
 ifdef DEVBUILD
-	SET_CFLAGS += -DAGA_DEVBUILD
+	override CFLAGS += -O -DAGA_DEVBUILD
 endif
 
 ifdef MAINTAINER
-	SET_CFLAGS += -ansi -pedantic -pedantic-errors -Wall -W -Werror
+	override CFLAGS += -ansi -pedantic -pedantic-errors -Wall -W -Werror
 endif
-
-SET_LDFLAGS =
-SET_LDLIBS = -lm
 
 XQUARTZ_ROOT = /opt/X11
 
@@ -58,23 +53,22 @@ ifdef WINDOWS
 	EXE = .exe
 	A = .lib
 
-	GL_LDLIBS = -lopengl32 -lglu32 -lshell32 -lwinmm
-	GL_LDLIBS += -lcomdlg32
+	override LDLIBS += -lopengl32 -lglu32 -lshell32 -lwinmm -lcomdlg32
+	override LDLIBS += -luser32 -lkernel32 -lgdi32
 
 	# TODO: Does this work under clang invoking LINK?
 	# NOTE: `-Wl' is not historically accurate.
-	SET_LDFLAGS += -Wl,-subsystem,windows
-	SET_LDLIBS += -luser32 -lkernel32 -lgdi32
+	override LDFLAGS += -Wl,-subsystem,windows
 else
 	LIB = lib
 	OBJ = .o
 	EXE =
 	A = .a
 
-	GL_LDLIBS = -lGL -lGLU -lX11
+	override LDLIBS += -lGL -lGLU -lX11
 	ifdef APPLE
-		GL_CFLAGS = -I$(XQUARTZ_ROOT)/include
-		GL_LDFLAGS = -L$(XQUARTZ_ROOT)/lib
+		override CFLAGS += -I$(XQUARTZ_ROOT)/include
+		override LDFLAGS += -L$(XQUARTZ_ROOT)/lib
 	endif
 endif
 
@@ -86,22 +80,17 @@ include vendor/www.mk
 include vendor/glm.mk
 include vendor/tiff.mk
 
-ifdef DEVBUILD
-	DEV_LIBS = $(GLM_OUT) $(TIF_OUT)
-	DEV_HDR = $(GLM_HDR) $(TIF_HDR)
-	DEV_INC = -I$(GLMH) -I$(TIFI)
-endif
-
 include src/aga.mk
 
-SET_CFLAGS += $(GL_CFLAGS)
-SET_CFLAGS += -I$(APRO) -I$(ASYSI) -I$(PYI) -I$(WWWH) $(DEV_INC) -Iinclude
-SET_CFLAGS += -Ivendor$(SEP)libtiff$(SEP)
-SET_CFLAGS += -DAGA_VERSION=\"$(VERSION)\"
+override CFLAGS += -I$(APRO_INCLUDE) -I$(ASYS_INCLUDE) -I$(PY_INCLUDE)
+override CFLAGS += -I$(WWW_INCLUDE) -I$(GLM_INCLUDE) -I$(TIFF_INCLUDE)
+
+override CFLAGS += -Iinclude -Ivendor$(SEP)libtiff$(SEP)
+override CFLAGS += -DAGA_VERSION=\"$(VERSION)\"
 
 .SUFFIXES: $(OBJ)
 .c$(OBJ):
-	$(CC) -c $(CFLAGS) $(SET_CFLAGS) -o $@ $<
+	$(CC) -c $(CFLAGS) -o $@ $<
 
 .DEFAULT_GOAL := all
 .PHONY: all
