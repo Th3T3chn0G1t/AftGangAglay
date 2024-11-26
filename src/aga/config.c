@@ -462,6 +462,10 @@ asys_bool_t aga_config_variable(
 				*(aga_config_int_t*) value = node->data.integer;
 				break;
 			}
+			/*
+			 * TODO: Could we add a float-free operation mode (with configured
+			 * 		 Fixed point scaling).
+			 */
 			case AGA_FLOAT: {
 				*(double*) value = node->data.flt;
 				break;

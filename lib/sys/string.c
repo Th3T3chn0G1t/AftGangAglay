@@ -344,6 +344,9 @@ asys_native_long_t asys_string_to_native_long(
 double asys_string_to_double(const char* string, char** end) {
 #ifdef ASYS_STDC
 	return strtod(string, end);
+#elif defined(ASYS_WIN32)
+	/* TODO: Temporary. */
+	return strtod(string, end);
 #else
 	/* TODO: Roll our own impl.. */
 	(void) string;
