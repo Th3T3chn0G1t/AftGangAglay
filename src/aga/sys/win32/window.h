@@ -11,12 +11,9 @@
 #include <asys/memory.h>
 #include <asys/log.h>
 
-/*
- * NOTE: Consumer Windows only started supporting OpenGL in 1997-ish.
- */
-/*
- * TODO: Separate WGL from period-accurate win32.
- */
+/* NOTE: Consumer Windows only started supporting OpenGL in 1997-ish. */
+
+/* TODO: Separate WGL from period-accurate win32. */
 
 #define AGA_CLASS_NAME ("AftGangAglay")
 
@@ -43,8 +40,9 @@ static const PIXELFORMATDESCRIPTOR pixel_format = {
 		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
 		/*
 		 * TODO: Broader palletization support -- user-specified palletes etc.
-		 * 		 See
-		 * 		 https://learn.microsoft.com/en-us/windows/win32/opengl/color-index-mode-and-windows-palette-management.
+		 * 		 See:
+		 * 		 https://learn.microsoft.com/en-us/windows/win32
+		 * 		 		/opengl/color-index-mode-and-windows-palette-management
 		 */
 #ifdef AGA_PALLETIZE
 		PFD_TYPE_COLORINDEX,
@@ -60,6 +58,7 @@ static const PIXELFORMATDESCRIPTOR pixel_format = {
 #define AGA_WINPROC_PACK_MAGIC (0x547123AA)
 
 struct aga_winproc_pack {
+	struct aga_window_device* env;
 	struct aga_window* win;
 	struct aga_keymap* keymap;
 	struct aga_pointer* pointer;
@@ -106,8 +105,58 @@ static LRESULT FAR CALLBACK aga_winproc(
 		}
 
 		case WM_MOUSEMOVE: {
-			pack->pointer->x = GET_X_LPARAM(l_param) - pack->win->client_off_x;
-			pack->pointer->y = GET_Y_LPARAM(l_param) - pack->win->client_off_y;
+			struct aga_window_device* env = pack->env;
+			struct aga_window* capture =  env->capture;
+
+			int x = GET_X_LPARAM(l_param);
+			int y = GET_Y_LPARAM(l_param);
+
+			int y_adj = env->caption_height + (env->border_sizeable_y * 2);
+
+			if(!capture) {
+				update_pointer: {
+					y += y_adj;
+
+					pack->pointer->dx = x - pack->pointer->x;
+					pack->pointer->dy = y - pack->pointer->y;
+
+					pack->pointer->x = x;
+					pack->pointer->y = y;
+
+					return 0;
+				}
+			}
+
+			/* Handle captured pointer. */
+			{
+				RECT r;
+
+				asys_bool_t centred;
+				int mid_x, mid_y;
+				int adj_mid_x, adj_mid_y;
+
+				GetWindowRect(hwnd, &r);
+
+				mid_x = pack->win->width / 2;
+				adj_mid_x = mid_x - env->border_sizeable_x;
+
+				mid_y = pack->win->height / 2;
+				adj_mid_y =
+						mid_y - env->border_sizeable_y -
+								env->caption_height;
+
+				centred = (x == adj_mid_x && y == adj_mid_y);
+
+				if(capture->hwnd == hwnd && !centred) {
+					pack->pointer->x = adj_mid_x;
+					pack->pointer->y = adj_mid_y + y_adj;
+
+					SetCursorPos(mid_x + r.left, mid_y + r.top);
+				}
+
+				if(!centred) goto update_pointer;
+			}
+
 			return 0;
 		}
 
@@ -187,8 +236,15 @@ enum asys_result aga_window_device_new(
 
 	(void) display;
 
+	env->capture = 0;
 	env->captured = ASYS_FALSE;
 	env->visible = ASYS_TRUE;
+
+	env->caption_height = GetSystemMetrics(SM_CYCAPTION);
+	env->border_x = GetSystemMetrics(SM_CXBORDER);
+	env->border_y = GetSystemMetrics(SM_CYBORDER);
+	env->border_sizeable_x = GetSystemMetrics(SM_CXFRAME);
+	env->border_sizeable_y = GetSystemMetrics(SM_CYFRAME);
 
 	if(!(env->cursor = LoadCursor(0, IDC_ARROW))) {
 		result = ASYS_RESULT_ERROR;
@@ -310,8 +366,6 @@ enum asys_result aga_window_new(
 
 	enum asys_result result;
 
-	RECT r;
-
 	if(!env) return ASYS_RESULT_BAD_PARAM;
 	if(!win) return ASYS_RESULT_BAD_PARAM;
 
@@ -338,17 +392,8 @@ enum asys_result aga_window_new(
 	}
 	else win->wgl = 0;
 
-	if(!GetClientRect(win->hwnd, &r)) {
-		result = ASYS_RESULT_ERROR;
-		asys_log_result(__FILE__, "GetClientRect", result);
-		return result;
-	}
-
-	win->width = r.right - r.left;
-	win->height = r.bottom - r.top;
-
-	win->client_off_x = r.left;
-	win->client_off_y = r.top;
+	win->width = width;
+	win->height = height;
 
 	return ASYS_RESULT_OK;
 }
@@ -424,7 +469,8 @@ enum asys_result aga_keymap_lookup(
 }
 
 static enum asys_result aga_setclipcursor(
-		struct aga_window* win, asys_bool_t clip) {
+		struct aga_window_device* env, struct aga_window* win,
+		asys_bool_t clip) {
 
 	enum asys_result result;
 
@@ -461,16 +507,11 @@ static enum asys_result aga_setclipcursor(
 		return result;
 	}
 
-	/*
-	 * NOTE: There seems to be a bit of a wonky activation area for the
-	 * 		 Resize cursor, so we have to do a bit of fanagling here. Better to
-	 * 		 Have a too-small clip area than have the mouse "leaking" out of
-	 * 		 The side of the window.
-	 */
-	rect.left = begin.x;
-	rect.top = begin.y + 1;
-	rect.right = end.x - 2;
-	rect.bottom = end.y - 1;
+	/* TODO: Handle sizeable vs. fixed windows. */
+	rect.left = begin.x + env->border_sizeable_x;
+	rect.top = begin.y + env->border_sizeable_y;
+	rect.right = end.x - env->border_sizeable_x;
+	rect.bottom = end.y - env->border_sizeable_y;
 
 	ClipCursor(&rect);
 
@@ -486,10 +527,12 @@ enum asys_result aga_window_set_cursor(
 
 	SetCursor(visible ? env->cursor : 0);
 
+	env->capture = captured ? win : 0;
+
 	env->visible = visible;
 	env->captured = captured;
 
-	return aga_setclipcursor(win, captured);
+	return aga_setclipcursor(env, win, captured);
 }
 
 enum asys_result aga_window_swap(
@@ -550,6 +593,7 @@ enum asys_result aga_window_device_poll(
 	pack.buttons = buttons;
 	pack.magic = AGA_WINPROC_PACK_MAGIC;
 	pack.win = win;
+	pack.env = env;
 
 	for(i = 0; i < ASYS_LENGTH(buttons->states); ++i) {
 		if(buttons->states[i] == AGA_BUTTON_CLICK) {
@@ -558,7 +602,7 @@ enum asys_result aga_window_device_poll(
 	}
 
 	if(env->captured) {
-		result = aga_setclipcursor(win, GetActiveWindow() == win->hwnd);
+		result = aga_setclipcursor(env, win, GetActiveWindow() == win->hwnd);
 		if(result) return result;
 	}
 

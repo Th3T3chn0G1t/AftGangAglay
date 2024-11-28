@@ -390,6 +390,7 @@ static enum asys_result aga_build_conf_file(
 		asys_size_t* offset) {
 
 	static asys_fixed_buffer_t buffer;
+	static asys_double_format_buffer_t double_format;
 #ifdef ASYS_WIN32
 	static asys_fixed_buffer_t standard_path;
 #endif
@@ -424,25 +425,43 @@ static enum asys_result aga_build_conf_file(
 	if(result) return result;
 #else
 	result = aga_fprintf_add(stream, 1, "<item name=\"%s\">\n", buffer);
-    if(result) return result;
+	if(result) return result;
 #endif
 
 	/* Unpleasant but neccesary. */
 #define agab_(indent, name, type, format, parameter) \
-        do { \
-            result = aga_fprintf_add( \
-                    stream, indent, \
-                    "<item name=\"%s\" type=\"%s\">\n", name, type); \
-            if(result) return result; \
-            \
-            result = aga_fprintf_add( \
+		do { \
+			result = aga_fprintf_add( \
+					stream, indent, \
+					"<item name=\"%s\" type=\"%s\">\n", name, type); \
+			if(result) return result; \
+			\
+			result = aga_fprintf_add( \
 					stream, indent + 1, format "\n", parameter); \
-            if(result) return result; \
-            \
-            result = aga_fprintf_add( \
-					stream, indent, "</item>\n"); \
-            if(result) return result; \
+			if(result) return result; \
+			\
+			result = aga_fprintf_add(stream, indent, "</item>\n"); \
+			if(result) return result; \
 		} while(0)
+
+#define agaf_(indent, name, value) \
+		do { \
+			result = aga_fprintf_add( \
+					stream, indent, \
+					"<item name=\"%s\" type=\"Float\">\n", name); \
+			if(result) return result; \
+			\
+			result = asys_float_to_string(value, &double_format); \
+			if(result) return result; \
+			\
+			result = aga_fprintf_add( \
+					stream, indent + 1, "%s", double_format); \
+			if(result) return result; \
+			\
+			result = aga_fprintf_add(stream, indent, "</item>\n"); \
+			if(result) return result; \
+		} while(0)
+
 	{
 		agab_(2, "Offset", "Integer", ASYS_NATIVE_ULONG_FORMAT, *offset);
 
@@ -480,12 +499,12 @@ static enum asys_result aga_build_conf_file(
 				result = asys_path_tail(buffer, tail, sizeof(tail));
 				if(result) return result;
 
-				agab_(2, "MinX", "Float", "%f", tail[0]);
-				agab_(2, "MinY", "Float", "%f", tail[1]);
-				agab_(2, "MinZ", "Float", "%f", tail[2]);
-				agab_(2, "MaxX", "Float", "%f", tail[3]);
-				agab_(2, "MaxY", "Float", "%f", tail[4]);
-				agab_(2, "MaxZ", "Float", "%f", tail[5]);
+				agaf_(2, "MinX", tail[0]);
+				agaf_(2, "MinY", tail[1]);
+				agaf_(2, "MinZ", tail[2]);
+				agaf_(2, "MaxX", tail[3]);
+				agaf_(2, "MaxY", tail[4]);
+				agaf_(2, "MaxZ", tail[5]);
 
 				/*
 				 * Mark model as version 2 -- we started discarding model

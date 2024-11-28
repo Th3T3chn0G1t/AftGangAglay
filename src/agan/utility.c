@@ -81,10 +81,13 @@ static void agan_log_object(struct py_object* op, const char* file) {
 		}
 
 		/* TODO: Implement `py_string_cat' of non-string objects. */
+		/* TODO: Cannot directly print float values under `wsprintf'. */
+		/*
 		case PY_TYPE_FLOAT: {
 			asys_log(file, "%lf", py_float_get(op));
 			break;
 		}
+		 */
 
 		case PY_TYPE_INT: {
 			asys_log(file, "%llu", py_int_get(op));
@@ -115,7 +118,7 @@ struct py_object* agan_log(
 		for(i = 0; i < py_varobject_size(args); ++i) {
 			/*
 			 * TODO: Single line logging instead of the series of logs that
-			 *       This produces.
+			 * 		 This produces.
 			 */
 			if(args->type == PY_TYPE_LIST) {
 				agan_log_object(py_list_get(args, i), file);

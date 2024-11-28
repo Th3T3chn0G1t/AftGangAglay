@@ -9,14 +9,18 @@ struct aga_window {
 	void* hwnd;
     void* wgl;
 	asys_size_t width, height;
-
-	int client_off_x, client_off_y;
 };
 
 /* TODO: Move event state output to window device? */
 struct aga_window_device {
 	void* cursor;
 	asys_bool_t visible, captured;
+
+	struct aga_window* capture;
+
+	int caption_height;
+	int border_sizeable_x, border_sizeable_y;
+	int border_x, border_y;
 };
 
 #endif

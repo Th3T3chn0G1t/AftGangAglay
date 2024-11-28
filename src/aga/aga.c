@@ -46,6 +46,11 @@ static enum asys_result aga_put_default(void) {
 	return aga_render_text_format(0.05f, 0.2f, text_color, str2);
 }
 
+/*
+ * TODO: We appear to have a memory leak (at least on Windows) which consumes
+ * 		 Hundreds of MiBs in seconds. Probably leaking a script engine
+ * 		 Reference.
+ */
 enum asys_result asys_main(struct asys_main_data* main_data) {
 	enum asys_result result;
 
@@ -228,6 +233,7 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 
 				result = aga_window_device_poll(
 						&env, &keymap, &win, &pointer, &die, &buttons);
+
 				asys_log_result(
 						__FILE__, "aga_window_device_poll", result);
 			}

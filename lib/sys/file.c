@@ -297,7 +297,7 @@ enum asys_result asys_path_iterate(
 	 */
 
 	/* NOTE: This cannot be static as this function recurses. */
-asys_fixed_buffer_t buffer = { 0 };
+	asys_fixed_buffer_t buffer = { 0 };
 
 	enum asys_result result;
 	enum asys_result held_result = ASYS_RESULT_OK;

@@ -356,6 +356,28 @@ double asys_string_to_double(const char* string, char** end) {
 #endif
 }
 
+enum asys_result asys_float_to_string(
+		float value, asys_double_format_buffer_t* buffer) {
+
+#ifdef ASYS_STDC
+	int count = sprintf(*buffer, "%f", value);
+	if(result < 0) return asys_result_errno(__FILE__, "vsprintf");
+
+	return ASYS_RESULT_OK;
+#elif defined(ASYS_WIN32)
+	/* TODO: Temp. */
+	extern int sprintf(char*, const char*, ...);
+
+	int count = sprintf(*buffer, "%f", value);
+	if(count < 0) return ASYS_RESULT_ERROR;
+
+	return ASYS_RESULT_OK;
+#else
+	/* TODO: Roll our own impl. */
+	return ASYS_RESULT_NOT_IMPLEMENTED;
+#endif
+}
+
 const char* asys_bool_to_string(asys_bool_t value) {
 	return value ? "true" : "false";
 }

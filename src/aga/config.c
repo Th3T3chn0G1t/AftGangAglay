@@ -317,8 +317,8 @@ static void aga_sgml_end_element(
 				asys_log(
 						__FILE__,
 						"warn: No data for `Float' config node `%s', "
-						"using default value `%lf'...",
-						node->name, AGA_CONFIG_FLOAT_DEFAULT);
+						"using default value...",
+						node->name);
 
 				node->data.flt = AGA_CONFIG_FLOAT_DEFAULT;
 				break;

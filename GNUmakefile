@@ -38,7 +38,7 @@ else
 endif
 
 ifdef DEVBUILD
-	override CFLAGS += -O -DAGA_DEVBUILD
+	override CFLAGS += -DAGA_DEVBUILD
 endif
 
 ifdef MAINTAINER

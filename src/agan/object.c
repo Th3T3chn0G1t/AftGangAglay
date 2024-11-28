@@ -198,7 +198,7 @@ static asys_bool_t agan_mkobj_model(
 
 			/*
 			 * TODO: Handle missing textures etc. gracefully - default/
-			 *       Procedural resources?
+			 * 		 Procedural resources?
 			 */
 			/*
 			 * TODO: Way to deliberately sweep resources once a certain
