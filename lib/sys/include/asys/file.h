@@ -18,6 +18,8 @@ enum asys_result asys_path_attribute(
 		const char*, enum asys_file_attribute_type,
 		union asys_file_attribute*);
 
+enum asys_result asys_path_older(const char*, const char*, asys_bool_t*);
+
 enum asys_result asys_path_tail(const char*, void*, asys_size_t);
 enum asys_result asys_path_remove(const char*);
 

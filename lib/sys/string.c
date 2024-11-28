@@ -357,7 +357,7 @@ double asys_string_to_double(const char* string, char** end) {
 }
 
 enum asys_result asys_float_to_string(
-		float value, asys_double_format_buffer_t* buffer) {
+		float value, asys_float_format_buffer_t* buffer) {
 
 #ifdef ASYS_STDC
 	int count = sprintf(*buffer, "%f", value);

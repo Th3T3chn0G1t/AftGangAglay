@@ -143,6 +143,8 @@ enum asys_result aga_settings_parse_config(
 	static const char* mipmap[] = { "Graphics", "MipmapDefault" };
 	static const char* fov[] = { "Display", "FOV" };
 
+	static asys_float_format_buffer_t double_format;
+
 	enum asys_result result;
 	struct asys_stream* stream;
 
@@ -265,12 +267,14 @@ enum asys_result aga_settings_parse_config(
 			__FILE__, "\tWindow Size: [ " ASYS_NATIVE_ULONG_FORMAT ", "
 			ASYS_NATIVE_ULONG_FORMAT " ]", opts->width, opts->height);
 
-
 	asys_log(
 			__FILE__, "\tMipmap?: %s",
 			asys_bool_to_string(opts->mipmap_default));
 
-	asys_log(__FILE__, "\tFOV: %f", opts->fov);
+	double_format[0] = 0;
+	result = asys_float_to_string(opts->fov, &double_format);
+	asys_log_result(__FILE__, "asys_float_to_string", result);
+	asys_log(__FILE__, "\tFOV: %s", double_format);
 
 	asys_log(__FILE__, "\tVerbose?: %s", asys_bool_to_string(opts->verbose));
 

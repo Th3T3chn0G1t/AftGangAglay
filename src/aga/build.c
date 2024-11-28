@@ -301,6 +301,8 @@ static enum asys_result aga_build_input_file(
 	aga_build_input_fn_t fn;
 	struct asys_stream in, out;
 
+	asys_bool_t older;
+
 	/*
 	 * Input kinds which are handled as "raw" need a special case when
 	 * Looking for the resultant artefact files -- we just redirect to the
@@ -315,6 +317,13 @@ static enum asys_result aga_build_input_file(
 
 	asys_string_concatenate(buffer, path);
 	asys_string_concatenate(buffer, AGA_RAW_SUFFIX);
+
+	result = asys_path_older(path, buffer, &older);
+	/* If we can't determine the age of the files -- rebuild anyway. */
+	asys_log_result(__FILE__, "asys_path_older", result);
+
+	/* TODO: Flag to force rebuilds. */
+	if(older) return ASYS_RESULT_OK;
 
 	result = asys_stream_new(&in, path);
 	if(result) return result;
@@ -390,7 +399,7 @@ static enum asys_result aga_build_conf_file(
 		asys_size_t* offset) {
 
 	static asys_fixed_buffer_t buffer;
-	static asys_double_format_buffer_t double_format;
+	static asys_float_format_buffer_t double_format;
 #ifdef ASYS_WIN32
 	static asys_fixed_buffer_t standard_path;
 #endif

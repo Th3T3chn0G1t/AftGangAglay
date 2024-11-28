@@ -9,7 +9,7 @@
 #include <asys/base.h>
 #include <asys/result.h>
 
-typedef char asys_double_format_buffer_t[128 + 1];
+typedef char asys_float_format_buffer_t[128 + 1];
 typedef int (*asys_string_find_predicate_t)(int);
 
 int asys_character_is_blank(int);
@@ -53,7 +53,7 @@ char* asys_string_duplicate(const char*);
 asys_native_long_t asys_string_to_native_long(const char*, char**);
 double asys_string_to_double(const char*, char**);
 
-enum asys_result asys_float_to_string(float, asys_double_format_buffer_t*);
+enum asys_result asys_float_to_string(float, asys_float_format_buffer_t*);
 const char* asys_bool_to_string(asys_bool_t);
 
 /*

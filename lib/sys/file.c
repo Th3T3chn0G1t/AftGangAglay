@@ -206,6 +206,24 @@ enum asys_result asys_path_attribute(
 #endif
 }
 
+enum asys_result asys_path_older(
+		const char* a, const char* b, asys_bool_t* a_older) {
+
+	enum asys_result result;
+
+	union asys_file_attribute a_attribute, b_attribute;
+
+	result = asys_path_attribute(a, ASYS_FILE_MODIFIED, &a_attribute);
+	if(result) return result;
+
+	result = asys_path_attribute(b, ASYS_FILE_MODIFIED, &b_attribute);
+	if(result) return result;
+
+	*a_older = a_attribute.modified <= b_attribute.modified;
+
+	return ASYS_RESULT_OK;
+}
+
 enum asys_result asys_path_tail(
 		const char* path, void* buffer, asys_size_t count) {
 
