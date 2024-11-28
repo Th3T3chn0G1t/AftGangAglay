@@ -203,7 +203,10 @@ static asys_bool_t agan_mkobj_model(
 			/*
 			 * TODO: Way to deliberately sweep resources once a certain
 			 * 		 Resource type memory cap is reached? Super big RAM spike
-			 * 		 When a scene loads all of these.
+			 * 		 When a scene loads all of these. We could make decref on
+			 * 		 A resource trigger a sweep if the global resource ceiling
+			 * 		 Is close to being reached and warn if we are still close
+			 * 		 To it.
 			 */
 			result = aga_resource_new(pack, texture_path, &res);
 			if(aga_script_err("aga_resource_new", result)) return ASYS_TRUE;

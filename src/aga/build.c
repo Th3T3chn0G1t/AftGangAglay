@@ -840,7 +840,9 @@ enum asys_result aga_build(struct aga_settings* opts) {
 	return ASYS_RESULT_OK;
 
 	cleanup: {
+		/* TODO: Add option to clean built files. */
 		/* TODO: Destroy failed intermediate files in error cases as well. */
+
 		/*
 		 * NOTE: `out_path' may reside in `root' so this needs to be before
 		 * 		 `aga_config_delete'.
