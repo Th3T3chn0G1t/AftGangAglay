@@ -96,9 +96,7 @@ enum asys_result aga_graph_update(
 	if(result) return result;
 	result = aga_graph_plot(graph, d++, 1, APRO_SCRIPT_UPDATE);
 	if(result) return result;
-	result = aga_graph_plot(graph, d++, 2, APRO_SCRIPT_INSTCALL_RISING);
-	if(result) return result;
-	result = aga_graph_plot(graph, d++, 2, APRO_SCRIPT_INSTCALL_EXEC);
+	result = aga_graph_plot(graph, d++, 2, APRO_SCRIPT_INSTCALL);
 	if(result) return result;
 	result = aga_graph_plot(graph, d++, 4, APRO_CEVAL_CODE_EVAL_RISING);
 	if(result) return result;

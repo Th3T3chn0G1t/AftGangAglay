@@ -213,14 +213,17 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 		result = aga_script_instance_new(&class, &inst);
 		asys_result_check(__FILE__, "aga_script_instance_new", result);
 
-		/* TODO: The EH mode on this right now is terrible. */
-		result = aga_script_instance_call(&script_engine, &inst, "create");
+		result = aga_script_instance_call(
+				&script_engine, &inst, AGA_SCRIPT_CREATE);
+
 		asys_log_result(__FILE__, "aga_script_instance_call", result);
 	}
 
 	asys_log(__FILE__, "Done!");
 
 	while(!die) {
+		/* TODO: Fix more formal ref/obj tracing for devbuilds. */
+
 		result = aga_window_select(&env, &win);
 		asys_log_result(__FILE__, "aga_window_select", result);
 
@@ -243,7 +246,8 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 			{
 				if(class.class) {
 					result = aga_script_instance_call(
-							&script_engine, &inst, "update");
+							&script_engine, &inst, AGA_SCRIPT_UPDATE);
+
 					asys_log_result(
 							__FILE__, "aga_script_instance_call", result);
 				}
@@ -283,13 +287,16 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 
 	asys_log(__FILE__, "Tearing down...");
 
+	/* TODO: Add `asys' Apple OSX/OS9 detection. */
 #ifdef __APPLE__
 	/* Need to flush before shutdown to avoid NSGL dying */
 	asys_log_result(__FILE__, "aga_render_flush", aga_render_flush());
 #endif
 
 	if(class.class) {
-		result = aga_script_instance_call(&script_engine, &inst, "close");
+		result = aga_script_instance_call(
+				&script_engine, &inst, AGA_SCRIPT_CLOSE);
+
 		asys_log_result(__FILE__, "aga_script_instance_call", result);
 
 		result = aga_script_instance_delete(&inst);

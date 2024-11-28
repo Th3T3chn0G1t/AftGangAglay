@@ -190,6 +190,7 @@ enum asys_result aga_script_engine_set_pointer(
 	return ASYS_RESULT_OK;
 }
 
+/* TODO: Decref this lookup once finished. */
 enum asys_result aga_script_engine_lookup(
 		struct aga_script_engine* eng, struct aga_script_class* class,
 		const char* name) {
@@ -200,7 +201,8 @@ enum asys_result aga_script_engine_lookup(
 	if(!class) return ASYS_RESULT_BAD_PARAM;
 	if(!name) return ASYS_RESULT_BAD_PARAM;
 
-	if(!(class->class = py_dict_lookup(eng->global, name))) {
+	class->class = py_dict_lookup(eng->global, name);
+	if(!class->class) {
 		asys_log(__FILE__, "Could not find class `%s' in game script", name);
 		return ASYS_RESULT_ERROR;
 	}
@@ -210,6 +212,16 @@ enum asys_result aga_script_engine_lookup(
 		asys_log(__FILE__, "Identifier `%s' was not `class'", name);
 		return ASYS_RESULT_ERROR;
 	}
+
+	/* TODO: Leaky error states. */
+	class->create_attr = py_class_get_attr(class->class, "create");
+	if(!class->create_attr) return ASYS_RESULT_ERROR;
+
+	class->update_attr = py_class_get_attr(class->class, "update");
+	if(!class->update_attr) return ASYS_RESULT_ERROR;
+
+	class->close_attr = py_class_get_attr(class->class, "close");
+	if(!class->close_attr) return ASYS_RESULT_ERROR;
 
 	return ASYS_RESULT_OK;
 }
@@ -221,9 +233,18 @@ enum asys_result aga_script_instance_new(
 	if(!inst) return ASYS_RESULT_BAD_PARAM;
 
 	inst->class = class;
-	if(!(inst->object = py_class_member_new(class->class))) {
-		return ASYS_RESULT_ERROR;
-	}
+
+	inst->object = py_class_member_new(class->class);
+	if(!inst->object) return ASYS_RESULT_ERROR;
+
+	inst->create_call = py_class_method_new(class->create_attr, inst->object);
+	if(!inst->create_call) return ASYS_RESULT_ERROR;
+
+	inst->update_call = py_class_method_new(class->update_attr, inst->object);
+	if(!inst->update_call) return ASYS_RESULT_ERROR;
+
+	inst->close_call = py_class_method_new(class->close_attr, inst->object);
+	if(!inst->close_call) return ASYS_RESULT_ERROR;
 
 	return ASYS_RESULT_OK;
 }
@@ -231,47 +252,41 @@ enum asys_result aga_script_instance_new(
 enum asys_result aga_script_instance_delete(struct aga_script_instance* inst) {
 	if(!inst) return ASYS_RESULT_BAD_PARAM;
 
-	py_object_decref((struct py_object*) inst->object);
+	py_object_decref(inst->object);
+
+	py_object_decref(inst->create_call);
+	py_object_decref(inst->update_call);
+	py_object_decref(inst->close_call);
 
 	return ASYS_RESULT_OK;
 }
 
 enum asys_result aga_script_instance_call(
 		struct aga_script_engine* eng, struct aga_script_instance* inst,
-		const char* name) {
+		enum aga_script_instance_method method) {
 
-	struct py_object* function;
-	struct py_object* methodcall;
+	void* call;
 
+	if(!eng) return ASYS_RESULT_BAD_PARAM;
 	if(!inst) return ASYS_RESULT_BAD_PARAM;
-	if(!name) return ASYS_RESULT_BAD_PARAM;
 
-	apro_stamp_start(APRO_SCRIPT_INSTCALL_RISING);
+	apro_stamp_start(APRO_SCRIPT_INSTCALL);
 
-	/* TODO: Add better user-facing errors here. */
-	if(!(function = py_class_get_attr(inst->class->class, name))) {
-		return ASYS_RESULT_ERROR;
+	switch(method) {
+		case AGA_SCRIPT_CREATE: call = inst->create_call; break;
+		case AGA_SCRIPT_UPDATE: call = inst->update_call; break;
+		case AGA_SCRIPT_CLOSE: call = inst->close_call; break;
+
+		default: return ASYS_RESULT_BAD_PARAM;
 	}
 
-	methodcall = py_class_method_new(function, inst->object);
+	py_call_function(eng->env, call, 0);
 	if(py_error_occurred()) {
 		aga_script_engine_trace();
 		return ASYS_RESULT_ERROR;
 	}
 
-	apro_stamp_end(APRO_SCRIPT_INSTCALL_RISING);
-
-	apro_stamp_start(APRO_SCRIPT_INSTCALL_EXEC);
-
-	py_call_function(eng->env, methodcall, 0);
-	if(py_error_occurred()) {
-		aga_script_engine_trace();
-		return ASYS_RESULT_ERROR;
-	}
-
-	apro_stamp_end(APRO_SCRIPT_INSTCALL_EXEC);
-
-	py_object_decref(methodcall);
+	apro_stamp_end(APRO_SCRIPT_INSTCALL);
 
 	return ASYS_RESULT_OK;
 }

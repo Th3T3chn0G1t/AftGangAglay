@@ -91,8 +91,7 @@ const char* apro_section_name(enum apro_section section) {
 		case APRO_PRESWAP: return "PRESWAP";
 		case APRO_POLL: return "POLL";
 		case APRO_SCRIPT_UPDATE: return "UPDATE";
-		case APRO_SCRIPT_INSTCALL_RISING: return "INSTCALL_RISING";
-		case APRO_SCRIPT_INSTCALL_EXEC: return "INSTCALL_EXEC";
+		case APRO_SCRIPT_INSTCALL: return "INSTCALL_EXEC";
 		case APRO_CEVAL_CODE_EVAL_RISING: return "CEVAL_RISING";
 		case APRO_CEVAL_CODE_EVAL: return "CEVAL";
 		case APRO_CEVAL_CODE_EVAL_FALLING: return "CEVAL_FALLING";

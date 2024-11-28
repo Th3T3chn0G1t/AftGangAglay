@@ -38,11 +38,19 @@ struct aga_script_userdata {
 
 struct aga_script_class {
 	void* class;
+
+	void* create_attr;
+	void* update_attr;
+	void* close_attr;
 };
 
 struct aga_script_instance {
 	struct aga_script_class* class;
 	void* object;
+
+	void* create_call;
+	void* update_call;
+	void* close_call;
 };
 
 struct aga_script_engine {
@@ -51,6 +59,12 @@ struct aga_script_engine {
 
 	void* global;
 	void* agan;
+};
+
+enum aga_script_instance_method {
+	AGA_SCRIPT_CREATE,
+	AGA_SCRIPT_UPDATE,
+	AGA_SCRIPT_CLOSE
 };
 
 enum asys_result aga_script_engine_new(
@@ -74,6 +88,7 @@ enum asys_result aga_script_instance_new(
 enum asys_result aga_script_instance_delete(struct aga_script_instance*);
 
 enum asys_result aga_script_instance_call(
-		struct aga_script_engine*, struct aga_script_instance*, const char*);
+		struct aga_script_engine*, struct aga_script_instance*,
+		enum aga_script_instance_method);
 
 #endif

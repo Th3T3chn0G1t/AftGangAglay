@@ -25,8 +25,7 @@ enum apro_section {
 	APRO_POLL, /* Top level window system/input poll. */
 
 	APRO_SCRIPT_UPDATE, /* Script update call. */
-	APRO_SCRIPT_INSTCALL_RISING, /* Rising edge for script Python exec. */
-	APRO_SCRIPT_INSTCALL_EXEC, /* Script Python exec. */
+	APRO_SCRIPT_INSTCALL, /* Script Python exec. */
 
 	APRO_CEVAL_CODE_EVAL_RISING, /* Rising edge for ceval code eval. */
 	APRO_CEVAL_CODE_EVAL, /* Ceval code eval. */

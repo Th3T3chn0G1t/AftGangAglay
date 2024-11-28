@@ -942,7 +942,7 @@ struct py_object* agan_objtrans(
 
 	apro_stamp_end(APRO_SCRIPTGLUE_OBJTRANS);
 
-	return obj->transform;
+	return py_object_incref(obj->transform);
 }
 
 struct py_object* agan_objind(
