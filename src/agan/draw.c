@@ -110,6 +110,8 @@ struct py_object* agan_text(
 
 	AGA_DEPRECATED("agan.text", "agan.text2d");
 
+	/* TODO: Implement engine-native translations `agan.text('msg.hello')'. */
+
 	(void) env;
 	(void) self;
 

@@ -94,6 +94,13 @@ static struct py_object* agan_mkpack(
 	 * TODO: Make `aga.sgml' contain build file info as a fallback from CLI
 	 * 		 For this.
 	 */
+	/* TODO: Auto-build on startup in dev builds (?). */
+	/*
+	 * TODO: Implement partial/archive updates -- in dev builds could allow for
+	 * 		 Leaving stale files as gaps in the pack and append new/moved
+	 * 		 Resources to avoid needing to re-copy everything. Make an
+	 * 		 Allowance in the pack header of empty space in dev builds.
+	 */
 	result = aga_build(opts);
 	if(aga_script_err("aga_build", result)) return 0;
 
