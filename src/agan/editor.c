@@ -11,6 +11,7 @@
 #include <aga/startup.h>
 #include <aga/config.h>
 #include <aga/window.h>
+#include <aga/build.h>
 
 #include <asys/log.h>
 #include <asys/memory.h>
@@ -41,7 +42,14 @@
  * 		 Function and its decls or just disable their functionality and force
  * 		 An error or guaranteed safe return.
  */
+
+/*
+ * TODO: Trying to call editor functions directly from the `agan' module
+ * 		 Causes a segfault.
+ */
+
 #ifdef AGA_DEVBUILD
+
 /*
  * TODO: Tear down and reload script land (or just user scripts) once we
  * 		 Consolidate Python state more to allow it.
@@ -81,6 +89,13 @@ static struct py_object* agan_mkpack(
 	(void) self;
 
 	if(args) return aga_arg_error("mkpack", "none");
+
+	/*
+	 * TODO: Make `aga.sgml' contain build file info as a fallback from CLI
+	 * 		 For this.
+	 */
+	result = aga_build(opts);
+	if(aga_script_err("aga_build", result)) return 0;
 
 	result = aga_resource_pack_new(opts->respack, pack);
 	if(aga_script_err("aga_resource_pack_new", result)) return 0;
@@ -171,7 +186,7 @@ static struct py_object* agan_dumpobj(
 	{
 		struct asys_stream stream;
 
-		result = asys_stream_new(&stream, path);
+		result = asys_stream_new_write(&stream, path);
 		if(aga_script_err("asys_stream_new", result)) return 0;
 
 		/* TODO: Leaky stream. */
