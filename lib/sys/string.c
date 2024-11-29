@@ -361,7 +361,7 @@ enum asys_result asys_float_to_string(
 
 #ifdef ASYS_STDC
 	int count = sprintf(*buffer, "%f", value);
-	if(result < 0) return asys_result_errno(__FILE__, "vsprintf");
+	if(count < 0) return asys_result_errno(__FILE__, "vsprintf");
 
 	return ASYS_RESULT_OK;
 #elif defined(ASYS_WIN32)

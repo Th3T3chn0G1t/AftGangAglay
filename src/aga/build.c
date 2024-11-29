@@ -402,13 +402,12 @@ static enum asys_result aga_build_conf_file(
 	static asys_float_format_buffer_t double_format;
 #ifdef ASYS_WIN32
 	static asys_fixed_buffer_t standard_path;
+	asys_size_t i;
 #endif
 
 	enum asys_result result;
 
 	union asys_file_attribute attr;
-
-	asys_size_t i;
 
 	/* Skip input files which don't match kind. */
 	if(!aga_build_path_matches_kind(path, kind)) return ASYS_RESULT_OK;
