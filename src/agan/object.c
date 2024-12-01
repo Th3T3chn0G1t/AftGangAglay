@@ -809,8 +809,8 @@ struct py_object* agan_objconf(
 	apro_stamp_start(APRO_SCRIPTGLUE_OBJCONF);
 
 	if(!aga_arg_list(args, PY_TYPE_TUPLE) ||
-	   !aga_arg(&o, args, 0, PY_TYPE_INT) ||
-	   !aga_arg(&l, args, 1, PY_TYPE_LIST)) {
+		!aga_arg(&o, args, 0, PY_TYPE_INT) ||
+		!aga_arg(&l, args, 1, PY_TYPE_LIST)) {
 
 		return aga_arg_error("objconf", "int and list");
 	}

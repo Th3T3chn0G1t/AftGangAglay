@@ -88,7 +88,8 @@ enum asys_result aga_mkmod(struct py_env* env, void** dict) {
 			aga_(shadeflat), aga_(getpix), aga_(setflag),
 
 			/* Miscellaneous */
-			aga_(getconf), aga_(log), aga_(die), aga_(dt),
+			aga_(getconf), aga_(packlist), aga_(log), aga_(die), aga_(dt),
+			aga_(strsplit),
 
 			/* Objects */
 			aga_(mkobj), aga_(inobj), aga_(putobj), aga_(killobj),
