@@ -24,6 +24,12 @@
 #include <asys/string.h>
 #include <asys/main.h>
 
+#include <mil/mil.h>
+
+struct aga_mil_userdata {
+	char dummy;
+};
+
 static enum asys_result aga_put_default(void) {
 	/*
 	 * TODO: We can definitely work on making this more useful. Maybe
@@ -46,12 +52,83 @@ static enum asys_result aga_put_default(void) {
 	return aga_render_text_format(0.05f, 0.2f, text_color, str2);
 }
 
+static void aga_update(struct mil_ctx* ctx) {
+	struct aga_mil_userdata* userdata = ctx->user;
+
+	/* TODO: Fix more formal ref/obj tracing for devbuilds. */
+
+	result = aga_window_select(&env, &win);
+	asys_log_result(__FILE__, "aga_window_select", result);
+
+	apro_stamp_start(APRO_PRESWAP);
+	{
+		apro_stamp_start(APRO_POLL);
+		{
+			pointer.dx = 0;
+			pointer.dy = 0;
+
+			result = aga_window_device_poll(
+					&env, &keymap, &win, &pointer, &die, &buttons);
+
+			asys_log_result(
+					__FILE__, "aga_window_device_poll", result);
+		}
+		apro_stamp_end(APRO_POLL);
+
+		apro_stamp_start(APRO_SCRIPT_UPDATE);
+		{
+			if(class.class) {
+				result = aga_script_instance_call(
+						&script_engine, &inst, AGA_SCRIPT_UPDATE);
+
+				asys_log_result(
+						__FILE__, "aga_script_instance_call", result);
+			}
+			else {
+				result = aga_put_default();
+				asys_log_result(__FILE__, "aga_put_default", result);
+			}
+		}
+		apro_stamp_end(APRO_SCRIPT_UPDATE);
+
+		apro_stamp_start(APRO_RES_SWEEP);
+		{
+			result = aga_resource_pack_sweep(&pack);
+			asys_log_result(
+					__FILE__, "aga_resource_pack_sweep", result);
+		}
+		apro_stamp_end(APRO_RES_SWEEP);
+	}
+	apro_stamp_end(APRO_PRESWAP);
+
+	/* TODO: This doesn't work under devbuilds. */
+	dt = (asys_size_t) apro_stamp_us(APRO_PRESWAP);
+
+	if(do_prof) {
+		result = aga_graph_update(&prof, &env);
+		asys_log_result(__FILE__, "aga_graph_update", result);
+	}
+
+	apro_clear();
+
+	/* Window is already dead/dying if `die' is set. */
+	if(!die) {
+		result = aga_window_swap(&env, &win);
+		asys_log_result(__FILE__, "aga_window_swap", result);
+	}
+}
+
 /*
  * TODO: We appear to have a memory leak (at least on Windows) which consumes
  * 		 Hundreds of MiBs in seconds. Probably leaking a script engine
  * 		 Reference.
  */
 enum asys_result asys_main(struct asys_main_data* main_data) {
+	static const struct mil_settings settings;
+
+	struct mil_ctx ctx = { 0 };
+	struct aga_mil_userdata mil_userdata;
+
 	enum asys_result result;
 
 	struct aga_settings opts;
@@ -86,6 +163,8 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 	struct aga_graph prof = { 0 };
 
 	struct aga_script_userdata userdata;
+
+	ctx.user = &mil_userdata;
 
 	userdata.keymap = &keymap;
 	userdata.pointer = &pointer;
@@ -222,67 +301,7 @@ enum asys_result asys_main(struct asys_main_data* main_data) {
 	asys_log(__FILE__, "Done!");
 
 	while(!die) {
-		/* TODO: Fix more formal ref/obj tracing for devbuilds. */
 
-		result = aga_window_select(&env, &win);
-		asys_log_result(__FILE__, "aga_window_select", result);
-
-		apro_stamp_start(APRO_PRESWAP);
-		{
-			apro_stamp_start(APRO_POLL);
-			{
-				pointer.dx = 0;
-				pointer.dy = 0;
-
-				result = aga_window_device_poll(
-						&env, &keymap, &win, &pointer, &die, &buttons);
-
-				asys_log_result(
-						__FILE__, "aga_window_device_poll", result);
-			}
-			apro_stamp_end(APRO_POLL);
-
-			apro_stamp_start(APRO_SCRIPT_UPDATE);
-			{
-				if(class.class) {
-					result = aga_script_instance_call(
-							&script_engine, &inst, AGA_SCRIPT_UPDATE);
-
-					asys_log_result(
-							__FILE__, "aga_script_instance_call", result);
-				}
-				else {
-					result = aga_put_default();
-					asys_log_result(__FILE__, "aga_put_default", result);
-				}
-			}
-			apro_stamp_end(APRO_SCRIPT_UPDATE);
-
-			apro_stamp_start(APRO_RES_SWEEP);
-			{
-				result = aga_resource_pack_sweep(&pack);
-				asys_log_result(
-						__FILE__, "aga_resource_pack_sweep", result);
-			}
-			apro_stamp_end(APRO_RES_SWEEP);
-		}
-		apro_stamp_end(APRO_PRESWAP);
-
-		/* TODO: This doesn't work under devbuilds. */
-		dt = (asys_size_t) apro_stamp_us(APRO_PRESWAP);
-
-		if(do_prof) {
-			result = aga_graph_update(&prof, &env);
-			asys_log_result(__FILE__, "aga_graph_update", result);
-		}
-
-		apro_clear();
-
-		/* Window is already dead/dying if `die' is set. */
-		if(!die) {
-			result = aga_window_swap(&env, &win);
-			asys_log_result(__FILE__, "aga_window_swap", result);
-		}
 	}
 
 	asys_log(__FILE__, "Tearing down...");

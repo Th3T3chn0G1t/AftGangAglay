@@ -39,6 +39,10 @@ LINK = LINK /NOLOGO /OUT:$@ $** $(LDFLAGS) $(LDLIBS)
 !include vendor/glm.mk
 !include vendor/tiff.mk
 
+MIL_BASE = vendor$(SEP)mil$(SEP)mil$(SEP)
+MIL_BACKEND = win32
+!include vendor/mil/mil/mil.mk
+
 # TODO: Remove once pgen has been switched to `asys_main'.
 LDFLAGS = $(LDFLAGS) /SUBSYSTEM:WINDOWS
 

@@ -21,3 +21,6 @@
 	branch = trunk
 	url = https://github.com/AftGangAglay/libtiff4.3beta018
 	shallow = true
+[submodule "vendor/mil"]
+	path = vendor/mil
+	url = https://github.com/AftGangAglay/MirageLayer

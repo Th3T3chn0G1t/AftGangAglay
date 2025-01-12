@@ -80,10 +80,15 @@ include vendor/www.mk
 include vendor/glm.mk
 include vendor/tiff.mk
 
+MIL_BASE = vendor$(SEP)mil$(SEP)mil$(SEP)
+MIL_BACKEND = x
+include vendor/mil/mil/mil.mk
+
 include src/aga.mk
 
 override CFLAGS += -I$(APRO_INCLUDE) -I$(ASYS_INCLUDE) -I$(PY_INCLUDE)
 override CFLAGS += -I$(WWW_INCLUDE) -I$(GLM_INCLUDE) -I$(TIFF_INCLUDE)
+override CFLAGS += -I$(MIL_INCLUDE)
 
 override CFLAGS += -Iinclude -Ivendor$(SEP)libtiff$(SEP)
 override CFLAGS += -DAGA_VERSION=\"$(VERSION)\"
@@ -99,7 +104,7 @@ all: $(AGA_OUT)
 .PHONY: clean
 .PHONY: clean_asys clean_apro
 .PHONY: clean_python clean_www clean_glm clean_tiff
-.PHONY: clean_aga
+.PHONY: clean_mil clean_aga
 
 clean: clean_asys clean_apro
 clean: clean_python clean_www clean_glm clean_tiff
